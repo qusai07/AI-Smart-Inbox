@@ -1,0 +1,20 @@
+Ministry of Health – Demo
+Digital Health Directorate
+
+Ref: MOHD/DH/2027/044
+Date: 2 February 2027
+
+To: Information Technology Department, Ministry of Digital Services – Demo
+
+Subject: Request for API access to the national digital identity service
+
+We are preparing to launch the new e-prescription service and request integration with your national digital identity (single sign-on) API. Please provide:
+
+1. Sandbox credentials and API documentation.
+2. The security assessment checklist required before production access.
+3. A technical contact for the integration.
+
+We target a production launch in Q3 2027.
+
+Eng. Khalid Rahman
+Head of Digital Health Integration

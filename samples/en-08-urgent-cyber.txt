@@ -1,0 +1,18 @@
+National Cybersecurity Centre – Demo
+URGENT – SECURITY ADVISORY
+
+Ref: NCSC-ADV-2027-009
+Date: 15 February 2027
+
+To: CIO, Ministry of Digital Services – Demo
+
+Subject: URGENT – Critical vulnerability in VPN gateways
+
+A critical remote-code-execution vulnerability (CVE-2027-10442) is being actively exploited in "SecureGate" VPN appliances. Our monitoring indicates that two of your Ministry's public IP addresses run an affected version.
+
+Required actions, immediately:
+1. Apply vendor patch 9.4.2 or disable the affected portal.
+2. Review VPN logs since 1 February 2027 for indicators of compromise (attached).
+3. Confirm remediation to the NCSC within 48 hours.
+
+NCSC Operations

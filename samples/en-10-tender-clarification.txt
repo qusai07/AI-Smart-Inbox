@@ -1,0 +1,18 @@
+Horizon Systems Integration LLC
+Date: 8 February 2027
+
+To: Procurement Committee, Ministry of Digital Services – Demo
+
+Subject: Clarification request – Tender MDS-T-2027-003 (Contact Centre Platform)
+
+Dear Committee,
+
+With reference to the above tender, we kindly request clarification on the following:
+
+1. Is on-premise hosting acceptable, or must the solution be cloud-hosted in-country?
+2. Section 4.3 requires 500 concurrent agents; Annex B mentions 350. Which figure is correct?
+3. Can the bid submission deadline of 15 March 2027 be extended by two weeks?
+
+Sincerely,
+Priya Nair
+Bid Manager

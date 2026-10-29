@@ -1,0 +1,26 @@
+{
+  "evalDate": "2027-02-16",
+  "notes": "Expected answers for the AI evals. Priorities are judged as of evalDate, which the eval runner passes to the model as today's date.",
+  "documents": [
+    { "file": "en-01-invitation-forum.txt",        "category": "Invitation", "priority": "Normal", "departmentId": 1 },
+    { "file": "en-02-invoice-cloud.txt",           "category": "Invoice",    "priority": "Normal", "departmentId": 3 },
+    { "file": "en-03-complaint-licence.txt",       "category": "Complaint",  "priority": "High",   "departmentId": 6 },
+    { "file": "en-04-court-notice.txt",            "category": "Legal",      "priority": "High",   "departmentId": 2 },
+    { "file": "en-05-secondment-request.txt",      "category": "Request",    "priority": "High",   "departmentId": 4 },
+    { "file": "en-06-api-integration.txt",         "category": "Request",    "priority": "Normal", "departmentId": 5 },
+    { "file": "en-07-circular-kpi.txt",            "category": "Circular",   "priority": "Normal", "departmentId": 7 },
+    { "file": "en-08-urgent-cyber.txt",            "category": "Other",      "priority": "Urgent", "departmentId": 5 },
+    { "file": "en-09-thank-you.txt",               "category": "Other",      "priority": "Low",    "departmentId": 1 },
+    { "file": "en-10-tender-clarification.txt",    "category": "Request",    "priority": "Normal", "departmentId": 3 },
+    { "file": "en-11-employee-grievance.txt",      "category": "Complaint",  "priority": "Normal", "departmentId": 4 },
+    { "file": "en-12-ambiguous-data-sharing.txt",  "category": "Request",    "priority": "Normal", "departmentId": 7 },
+    { "file": "en-13-email-outage.eml",            "category": "Complaint",  "priority": "Urgent", "departmentId": 5 },
+    { "file": "ar-01-complaint-delay.txt",         "category": "Complaint",  "priority": "Normal", "departmentId": 6 },
+    { "file": "ar-02-urgent-minister-meeting.txt", "category": "Invitation", "priority": "Urgent", "departmentId": 1 },
+    { "file": "ar-03-invoice-maintenance.txt",     "category": "Invoice",    "priority": "Normal", "departmentId": 3 },
+    { "file": "ar-04-legal-contract-review.txt",   "category": "Legal",      "priority": "High",   "departmentId": 2 },
+    { "file": "ar-05-circular-flexible-work.txt",  "category": "Circular",   "priority": "Normal", "departmentId": 4 },
+    { "file": "ar-06-training-request.txt",        "category": "Request",    "priority": "Normal", "departmentId": 4 },
+    { "file": "ar-07-strategy-report.txt",         "category": "Request",    "priority": "Normal", "departmentId": 7 }
+  ]
+}

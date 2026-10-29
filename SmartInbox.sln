@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A908A859-8154-4576-AA75-A9CA758DB20C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.Api", "src\SmartInbox.Api\SmartInbox.Api.csproj", "{181F3209-A740-4390-A375-B8BD196524AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.Application", "src\SmartInbox.Application\SmartInbox.Application.csproj", "{24C8E411-AFBE-41AF-BE18-5CAC1E12E951}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.Domain", "src\SmartInbox.Domain\SmartInbox.Domain.csproj", "{93A588C0-C634-4CD3-9A25-A289364EBEF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.Infrastructure", "src\SmartInbox.Infrastructure\SmartInbox.Infrastructure.csproj", "{E0825692-679C-4875-9C01-0455470D8B5C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1BE3F8B0-BE0A-4D69-AC01-488FFB5C115C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.AiEvals", "tests\SmartInbox.AiEvals\SmartInbox.AiEvals.csproj", "{F759C5D5-53BE-4434-9E47-D774AA4B6421}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartInbox.UnitTests", "tests\SmartInbox.UnitTests\SmartInbox.UnitTests.csproj", "{DB26317C-2BCD-4138-B532-974BB8A4F901}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{181F3209-A740-4390-A375-B8BD196524AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{181F3209-A740-4390-A375-B8BD196524AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{181F3209-A740-4390-A375-B8BD196524AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{181F3209-A740-4390-A375-B8BD196524AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24C8E411-AFBE-41AF-BE18-5CAC1E12E951}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24C8E411-AFBE-41AF-BE18-5CAC1E12E951}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24C8E411-AFBE-41AF-BE18-5CAC1E12E951}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24C8E411-AFBE-41AF-BE18-5CAC1E12E951}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93A588C0-C634-4CD3-9A25-A289364EBEF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93A588C0-C634-4CD3-9A25-A289364EBEF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93A588C0-C634-4CD3-9A25-A289364EBEF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93A588C0-C634-4CD3-9A25-A289364EBEF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0825692-679C-4875-9C01-0455470D8B5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0825692-679C-4875-9C01-0455470D8B5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0825692-679C-4875-9C01-0455470D8B5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0825692-679C-4875-9C01-0455470D8B5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F759C5D5-53BE-4434-9E47-D774AA4B6421}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F759C5D5-53BE-4434-9E47-D774AA4B6421}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F759C5D5-53BE-4434-9E47-D774AA4B6421}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F759C5D5-53BE-4434-9E47-D774AA4B6421}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB26317C-2BCD-4138-B532-974BB8A4F901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB26317C-2BCD-4138-B532-974BB8A4F901}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB26317C-2BCD-4138-B532-974BB8A4F901}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB26317C-2BCD-4138-B532-974BB8A4F901}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{181F3209-A740-4390-A375-B8BD196524AF} = {A908A859-8154-4576-AA75-A9CA758DB20C}
+		{24C8E411-AFBE-41AF-BE18-5CAC1E12E951} = {A908A859-8154-4576-AA75-A9CA758DB20C}
+		{93A588C0-C634-4CD3-9A25-A289364EBEF7} = {A908A859-8154-4576-AA75-A9CA758DB20C}
+		{E0825692-679C-4875-9C01-0455470D8B5C} = {A908A859-8154-4576-AA75-A9CA758DB20C}
+		{F759C5D5-53BE-4434-9E47-D774AA4B6421} = {1BE3F8B0-BE0A-4D69-AC01-488FFB5C115C}
+		{DB26317C-2BCD-4138-B532-974BB8A4F901} = {1BE3F8B0-BE0A-4D69-AC01-488FFB5C115C}
+	EndGlobalSection
+EndGlobal

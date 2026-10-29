@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/App_Data/
+.git/
+.vs/
+.vscode/
+.env
+tests/
+docs/
+samples/

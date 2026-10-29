@@ -1,0 +1,68 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__SmartInbox: "Server=sqlserver,1433;Database=SmartInbox;User Id=sa;Password=${SQL_PASSWORD:-Your_strong_Passw0rd};TrustServerCertificate=True"
+      # Rules | Ollama | Claude | Hybrid (rules first, LLM only when unsure). Defaults are free.
+      Ai__Provider: "${AI_PROVIDER:-Hybrid}"
+      Ai__Llm: "${AI_LLM:-Ollama}"
+      Ollama__BaseUrl: "${OLLAMA_URL:-http://host.docker.internal:11434}"
+      Ollama__Model: "${OLLAMA_MODEL:-qwen2.5:3b}"
+      Claude__ApiKey: "${ANTHROPIC_API_KEY:-}"
+      Claude__Model: "${CLAUDE_MODEL:-claude-sonnet-5-5}"
+      # Routing emails. Defaults to the bundled smtp4dev test server; point at a real SMTP server to go live.
+      Email__Enabled: "${EMAIL_ENABLED:-true}"
+      Email__Host: "${SMTP_HOST:-smtp4dev}"
+      Email__Port: "${SMTP_PORT:-25}"
+      Email__Security: "${SMTP_SECURITY:-None}"
+      Email__Username: "${SMTP_USERNAME:-}"
+      Email__Password: "${SMTP_PASSWORD:-}"
+      Email__FromAddress: "${EMAIL_FROM:-smart-inbox@mds.demo}"
+      Notifications__AppBaseUrl: "${APP_BASE_URL:-http://localhost:8080}"
+      Notifications__DeskEmail: "${DESK_EMAIL:-}"
+      Reminders__Enabled: "${REMINDERS_ENABLED:-true}"
+      Reminders__DigestHour: "${REMINDERS_DIGEST_HOUR:-8}"
+      Reminders__DueSoonDays: "${REMINDERS_DUE_SOON_DAYS:-3}"
+      Reminders__TimeZone: "${REMINDERS_TIMEZONE:-Asia/Dubai}"
+      # Sign-in. Demo users (admin/clerk/legal.user/hr.user @mds.demo) are on by default for the demo;
+      # for real use set AUTH_SEED_DEMO=false plus AUTH_ADMIN_EMAIL / AUTH_ADMIN_PASSWORD.
+      Auth__SeedDemoUsers: "${AUTH_SEED_DEMO:-true}"
+      Auth__DemoPassword: "${AUTH_DEMO_PASSWORD:-Demo#2026}"
+      Auth__AdminEmail: "${AUTH_ADMIN_EMAIL:-}"
+      Auth__AdminPassword: "${AUTH_ADMIN_PASSWORD:-}"
+      # "Sign in with Microsoft" appears when all three are set (Entra ID app registration).
+      Auth__Entra__TenantId: "${ENTRA_TENANT_ID:-}"
+      Auth__Entra__ClientId: "${ENTRA_CLIENT_ID:-}"
+      Auth__Entra__ClientSecret: "${ENTRA_CLIENT_SECRET:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads:/data
+    depends_on:
+      - sqlserver
+      - smtp4dev
+    restart: unless-stopped
+
+  # Test mail server: catches every email, nothing is delivered. Inbox UI at http://localhost:5100
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    ports:
+      - "5100:80"
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD:-Your_strong_Passw0rd}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    restart: unless-stopped
+
+volumes:
+  sqldata:
+  uploads:

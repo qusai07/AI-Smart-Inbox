@@ -1,0 +1,15 @@
+From: "Service Desk - Demo Customs" <servicedesk@customs.demo>
+To: "IT Operations" <itops@mds.demo>
+Subject: Payment gateway errors on joint customs e-service
+Date: Mon, 15 Feb 2027 09:12:00 +0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hello IT Operations team,
+
+Since 07:30 this morning, around 40% of payments on the joint customs clearance e-service fail with error code PG-502 after the user is redirected back from the payment gateway. Customers are being charged but the transaction is not recorded.
+
+Ticket reference: DC-INC-30117. Please investigate your side of the integration and share an update.
+
+Best regards,
+Demo Customs Service Desk

@@ -1,0 +1,16 @@
+NIMBUS CLOUD SERVICES LLC
+TAX INVOICE
+
+Invoice No: NCS-INV-88213
+Invoice Date: 05 February 2027
+Bill To: Finance & Procurement Department, Ministry of Digital Services – Demo
+Purchase Order: PO-2026-4471
+
+Description                                   Amount (AED)
+Managed cloud hosting – January 2027           142,500.00
+Premium support – January 2027                  18,000.00
+VAT 5%                                           8,025.00
+TOTAL DUE                                      168,525.00
+
+Payment terms: 30 days from invoice date (due 07 March 2027).
+Bank: Demo National Bank, IBAN AE00 0000 0000 0000 0000 000
