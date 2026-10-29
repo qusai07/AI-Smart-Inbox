@@ -122,6 +122,31 @@ public class ClientTests(SmartInboxFactory server)
     }
 
     [Fact]
+    public async Task CommentAssignAndMembers()
+    {
+        var (_, desk) = await server.CreateKeyAsync("Clerk");
+        var inbox = server.Sdk(desk);
+        var doc = await inbox.Documents.UploadTextAsync("Court summons; please appoint counsel.");
+        await inbox.Documents.WaitForAnalysisAsync(doc.Id, AnalysisTimeout);
+
+        await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Documents.AssignAsync(doc.Id, "anyone"));
+        await inbox.Documents.RouteAsync(doc.Id, 2);
+
+        var members = await inbox.Departments.MembersAsync(2);
+        var omar = Assert.Single(members, m => m.DisplayName.Contains("Omar"));
+        await inbox.Documents.AssignAsync(doc.Id, omar.Id);
+        var comment = await inbox.Documents.CommentAsync(doc.Id, "Counsel briefed.");
+
+        var detail = await inbox.Documents.GetAsync(doc.Id);
+        Assert.Equal(omar.Id, detail.Assignee!.Id);
+        Assert.Equal("API key: Clerk test key", comment.AuthorName);
+        Assert.Contains(detail.Comments, c => c.Text == "Counsel briefed.");
+
+        var (_, hr) = await server.CreateKeyAsync("Department", departmentId: 4);
+        await Assert.ThrowsAsync<SmartInboxNotFoundException>(() => server.Sdk(hr).Departments.MembersAsync(2));
+    }
+
+    [Fact]
     public async Task RevokedKey_GetsUnauthorized()
     {
         var (id, key) = await server.CreateKeyAsync("Clerk");
@@ -183,6 +208,8 @@ public class ClientTests(SmartInboxFactory server)
     [InlineData(typeof(Stats), "StatsDto")]
     [InlineData(typeof(Department), "Department")]
     [InlineData(typeof(DepartmentWorkload), "DepartmentWorkloadDto")]
+    [InlineData(typeof(Member), "MemberDto")]
+    [InlineData(typeof(Comment), "CommentDto")]
     public async Task Contract_SdkModelsMatchSwaggerSchemas(Type sdkType, string schema)
     {
         using var http = server.CreateClient();

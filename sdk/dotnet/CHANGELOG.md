@@ -2,6 +2,12 @@
 
 All notable changes to `SmartInbox.Client` and `SmartInbox.Client.AspNetCore`. The packages follow [Semantic Versioning](https://semver.org/).
 
+## 0.2.0 — 2026-10-29
+
+- `Documents.CommentAsync` and `Documents.AssignAsync`
+- `Departments.MembersAsync`
+- `DocumentListQuery.Mine`
+
 ## 0.1.0 — 2026-10-29
 
 First release.

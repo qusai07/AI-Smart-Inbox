@@ -53,6 +53,9 @@ public sealed record Assignee(string Id, string Name);
 
 public sealed record Comment(long Id, string? AuthorId, string AuthorName, string Text, DateTime CreatedAt);
 
+/// <summary>A staff member who can be assigned documents.</summary>
+public sealed record Member(string Id, string DisplayName);
+
 public sealed record Department(int Id, string NameEn, string NameAr, string? Description, string? Keywords, string? Email, string? HeadEmail);
 
 public sealed record DepartmentWorkload(int DepartmentId, int New, int Acknowledged, int Closed, int Overdue);
@@ -89,6 +92,8 @@ public sealed record DocumentListQuery
     public int? Assigned { get; init; }
     /// <summary>Only documents in this handling state.</summary>
     public HandlingStatus? Handling { get; init; }
+    /// <summary>Only documents assigned to the key itself (rarely useful for keys; mirrors the web app's "Mine").</summary>
+    public bool Mine { get; init; }
     /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
     public string? Search { get; init; }
     /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>

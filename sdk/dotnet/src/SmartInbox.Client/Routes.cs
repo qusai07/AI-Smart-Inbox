@@ -9,6 +9,7 @@ internal static class Routes
     public static string DocumentAction(Guid id, string action) => $"api/documents/{id}/{action}";
     public const string Departments = "api/departments";
     public const string Workload = "api/departments/workload";
+    public static string Members(int departmentId) => $"api/departments/{departmentId}/members";
     public const string Stats = "api/stats";
 
     /// <summary>(method, OpenAPI path template) pairs, for the contract test.</summary>
@@ -23,6 +24,9 @@ internal static class Routes
         ("POST", "/api/documents/{id}/acknowledge"),
         ("POST", "/api/documents/{id}/close"),
         ("POST", "/api/documents/{id}/reopen"),
+        ("POST", "/api/documents/{id}/assign"),
+        ("POST", "/api/documents/{id}/comments"),
+        ("GET", "/api/departments/{id}/members"),
         ("GET", "/api/departments"),
         ("GET", "/api/departments/workload"),
         ("GET", "/api/stats"),

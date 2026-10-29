@@ -82,6 +82,15 @@ public sealed class DocumentsClient
     public Task ReopenAsync(Guid id, CancellationToken ct = default) =>
         _client.SendAsync(HttpMethod.Post, Routes.DocumentAction(id, "reopen"), null, ct);
 
+    /// <summary>Adds an internal comment (max 2000 characters). The author is the API key ("API key: name").</summary>
+    public Task<Comment> CommentAsync(Guid id, string text, CancellationToken ct = default) =>
+        _client.SendAsync<Comment>(HttpMethod.Post, Routes.DocumentAction(id, "comments"), JsonBody(new { text }), ct);
+
+    /// <summary>Assigns a routed document to a staff member of its department, or unassigns it with null.</summary>
+    /// <exception cref="SmartInboxConflictException">It hasn't been routed yet.</exception>
+    public Task AssignAsync(Guid id, string? userId, CancellationToken ct = default) =>
+        _client.SendAsync(HttpMethod.Post, Routes.DocumentAction(id, "assign"), new { userId }, ct);
+
     /// <summary>
     /// Polls until analysis has finished (Analyzed, NeedsReview, Failed or Routed) and returns the document.
     /// For event-driven code, subscribe to the <c>document.analyzed</c> webhook instead.
@@ -101,6 +110,8 @@ public sealed class DocumentsClient
         }
     }
 
+    private static HttpContent JsonBody(object body) => System.Net.Http.Json.JsonContent.Create(body, options: SmartInboxClient.Json);
+
     internal static string QueryString(DocumentListQuery q)
     {
         var parts = new List<string>();
@@ -114,6 +125,7 @@ public sealed class DocumentsClient
         Add("assigned", q.Assigned);
         Add("handling", q.Handling);
         Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
+        if (q.Mine) Add("mine", "true");
         Add("page", q.Page);
         Add("pageSize", q.PageSize);
         return string.Join('&', parts);
@@ -130,6 +142,11 @@ public sealed class DepartmentsClient
     /// <summary>All departments (the targets for routing).</summary>
     public Task<IReadOnlyList<Department>> ListAsync(CancellationToken ct = default) =>
         _client.GetAsync<IReadOnlyList<Department>>(Routes.Departments, ct);
+
+    /// <summary>Active staff of a department, who documents can be assigned to.</summary>
+    /// <exception cref="SmartInboxNotFoundException">A Department key asked about another department.</exception>
+    public Task<IReadOnlyList<Member>> MembersAsync(int departmentId, CancellationToken ct = default) =>
+        _client.GetAsync<IReadOnlyList<Member>>(Routes.Members(departmentId), ct);
 
     /// <summary>New / acknowledged / closed / overdue counts per department the key can see.</summary>
     public Task<IReadOnlyList<DepartmentWorkload>> GetWorkloadAsync(CancellationToken ct = default) =>
