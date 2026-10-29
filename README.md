@@ -275,6 +275,7 @@ flowchart LR
 
 - **API keys** (*Administration → API keys*): `Authorization: Bearer sik_…`. A key has a role (Admin, Clerk or Department, plus a department), so it gets exactly the same permissions as a person with that role. The key is shown once; only its SHA-256 hash is stored. Actions appear on the timeline as `API key: <name>`.
 - **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened` and `deadline.approaching`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
+- **MCP server for Claude** ([docs/MCP.md](docs/MCP.md)): `smartinbox-mcp` lets Claude Desktop or Claude Code find what needs attention, explain letters in English and Arabic, and route or close them. It uses your API key's permissions, is read-only unless you enable writes, and treats letter text as untrusted input (prompt-injection aware).
 - **.NET SDK** ([`sdk/dotnet`](sdk/dotnet)): `SmartInbox.Client` (typed client, paging, typed errors, safe retries, `WebhookVerifier`) and `SmartInbox.Client.AspNetCore` (`MapSmartInboxWebhooks`). Samples in [`sdk/samples`](sdk/samples).
 
 ```csharp
@@ -332,7 +333,8 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 
 ### Integrations
 - [x] **API keys, signed webhooks and a .NET SDK** (`SmartInbox.Client`).
-- [ ] **MCP server** so Claude can operate the inbox through the SDK.
+- [x] **MCP server** so Claude can work the inbox (`smartinbox-mcp`).
+- [ ] **Correspondence agent** that drafts reply letters on top of the MCP server.
 - [ ] **Mailbox ingestion.** Pull incoming correspondence from a shared mailbox (IMAP or Microsoft Graph), including attachments.
 - [ ] **Microsoft Teams notifications** as an alternative to email.
 - [ ] **Entra app roles / groups** mapped to Admin, Clerk and Department automatically.

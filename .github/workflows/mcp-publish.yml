@@ -1,0 +1,33 @@
+name: Publish MCP server
+
+# Push a tag like mcp-v0.1.0 (matching <Version> in mcp/SmartInbox.Mcp/SmartInbox.Mcp.csproj) to publish the
+# `smartinbox-mcp` dotnet tool to NuGet. The tool depends on SmartInbox.Client, so publish the SDK version it
+# references first (sdk-v* tag). Needs the repository secret NUGET_API_KEY.
+on:
+  push:
+    tags: ['mcp-v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Check the tag matches the package version
+        run: |
+          version=$(grep -oP '(?<=<Version>)[^<]+' mcp/SmartInbox.Mcp/SmartInbox.Mcp.csproj)
+          if [ "mcp-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test tests/SmartInbox.Mcp.Tests --no-build -c Release
+      - run: dotnet pack mcp/SmartInbox.Mcp --no-build -c Release -o out
+
+      - name: Push to NuGet
+        run: dotnet nuget push "out/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

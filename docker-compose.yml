@@ -63,6 +63,22 @@ services:
       - "5090:5090"
     restart: unless-stopped
 
+  # MCP server for Claude, shared HTTP mode: `docker compose --profile mcp up`. MCP endpoint: http://localhost:8090/mcp;
+  # each client sends its own "Authorization: Bearer sik_..." (Administration → API keys).
+  mcp:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: mcp/SmartInbox.Mcp/Dockerfile
+    environment:
+      SMARTINBOX_URL: "http://app:8080"
+      SMARTINBOX_MCP_WRITES: "${MCP_WRITES:-false}"
+    ports:
+      - "8090:8090"
+    depends_on:
+      - app
+    restart: unless-stopped
+
   # Test mail server: catches every email, nothing is delivered. Inbox UI at http://localhost:5100
   smtp4dev:
     image: rnwood/smtp4dev:v3
