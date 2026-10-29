@@ -14,7 +14,7 @@ public class ApiKeyAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, ApiKeyService keys)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string Scheme = "ApiKey";
+    public const string SchemeName = "ApiKey";
     private const string BearerPrefix = "Bearer ";
 
     /// <summary>True when the request presents an API key (as opposed to the browser cookie).</summary>
@@ -36,8 +36,8 @@ public class ApiKeyAuthenticationHandler(
         };
         if (key.DepartmentId is { } dep) claims.Add(new Claim(ClaimNames.DepartmentId, dep.ToString()));
 
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme));
-        return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
+        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)

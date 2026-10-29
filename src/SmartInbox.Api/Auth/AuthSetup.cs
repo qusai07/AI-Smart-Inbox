@@ -78,8 +78,8 @@ public static class AuthSetup
                 o.DefaultForbidScheme = CookieOrApiKeyScheme;
             })
             .AddPolicyScheme(CookieOrApiKeyScheme, "Cookie or API key", o => o.ForwardDefaultSelector = ctx =>
-                ApiKeyAuthenticationHandler.HasKey(ctx.Request) ? ApiKeyAuthenticationHandler.Scheme : IdentityConstants.ApplicationScheme)
-            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.Scheme, null);
+                ApiKeyAuthenticationHandler.HasKey(ctx.Request) ? ApiKeyAuthenticationHandler.SchemeName : IdentityConstants.ApplicationScheme)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, null);
 
         var entra = config.GetSection("Auth:Entra").Get<EntraOptions>() ?? new EntraOptions();
         services.Configure<EntraOptions>(config.GetSection("Auth:Entra"));
