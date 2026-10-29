@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartInbox.Api\SmartInbox.Api.csproj" />
+    <ProjectReference Include="..\..\mcp\SmartInbox.Mcp\SmartInbox.Mcp.csproj" />
+  </ItemGroup>
+
+  <!-- The same in-process Smart Inbox (in-memory DB, rule-based AI) the SDK tests use. -->
+  <ItemGroup>
+    <Compile Include="..\SmartInbox.Client.Tests\SmartInboxFactory.cs" Link="SmartInboxFactory.cs" />
+  </ItemGroup>
+
+</Project>

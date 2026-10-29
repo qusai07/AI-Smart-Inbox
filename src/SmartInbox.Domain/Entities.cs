@@ -118,6 +118,68 @@ public class Notification
     public DateTime? SentAt { get; set; }
 }
 
+/// <summary>A credential for other systems (SDK, integrations). It acts as a role, like a user, but signs in without a browser.</summary>
+public class ApiKey
+{
+    public int Id { get; set; }
+    public required string Name { get; set; }
+    /// <summary>Public part of the key ("sik_a1b2c3d4"), safe to show and used to look the key up.</summary>
+    public required string Prefix { get; set; }
+    /// <summary>Hex SHA-256 of the full key. The key itself is shown once and never stored.</summary>
+    public required string Hash { get; set; }
+    public required string Role { get; set; }
+    public int? DepartmentId { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ExpiresAt { get; set; }
+    public DateTime? LastUsedAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+}
+
+/// <summary>An external URL that receives signed event notifications.</summary>
+public class WebhookEndpoint
+{
+    public int Id { get; set; }
+    public required string Url { get; set; }
+    public string? Description { get; set; }
+    /// <summary>Signing secret ("whsec_..."), encrypted at rest.</summary>
+    public required string Secret { get; set; }
+    /// <summary>The secret before the last rotation; still signs requests until <see cref="PreviousSecretExpiresAt"/>.</summary>
+    public string? PreviousSecret { get; set; }
+    public DateTime? PreviousSecretExpiresAt { get; set; }
+    /// <summary>"*" or a comma-separated list of event types.</summary>
+    public string Events { get; set; } = "*";
+    /// <summary>Only events about this department's documents. Null = all.</summary>
+    public int? DepartmentId { get; set; }
+    public bool Enabled { get; set; } = true;
+    public int ConsecutiveFailures { get; set; }
+    public string? DisabledReason { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>Outbox row: one event for one endpoint. Written in the same transaction as the change that caused it.</summary>
+public class WebhookDelivery
+{
+    public long Id { get; set; }
+    public int EndpointId { get; set; }
+    /// <summary>Stable across retries and redeliveries, so receivers can de-duplicate.</summary>
+    public required string EventId { get; set; }
+    public required string EventType { get; set; }
+    public required string Payload { get; set; }
+    /// <summary>Unique per endpoint and logical event (e.g. "deadline:{doc}:{date}") so scheduled events fire once.</summary>
+    public string? DedupKey { get; set; }
+    public WebhookDeliveryStatus Status { get; set; } = WebhookDeliveryStatus.Pending;
+    public int Attempts { get; set; }
+    public DateTime NextAttemptAt { get; set; } = DateTime.UtcNow;
+    public int? LastStatusCode { get; set; }
+    public string? LastError { get; set; }
+    public string? LastResponseSnippet { get; set; }
+    public int? DurationMs { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeliveredAt { get; set; }
+}
+
 public class RoutingDecision
 {
     public int Id { get; set; }

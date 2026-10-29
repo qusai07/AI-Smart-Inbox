@@ -1,0 +1,77 @@
+using System.Text.Json;
+
+namespace SmartInbox.Client.Webhooks;
+
+/// <summary>
+/// A verified webhook event. Switch on the concrete type (<see cref="DocumentRoutedEvent"/>, ...).
+/// Events can arrive more than once and out of order: de-duplicate by <see cref="Id"/> and order by <see cref="CreatedAt"/>.
+/// </summary>
+public abstract record SmartInboxEvent
+{
+    /// <summary>Stable across retries and redeliveries (<c>evt_...</c>).</summary>
+    public string Id { get; init; } = "";
+    /// <summary>Event type, e.g. <c>document.routed</c>.</summary>
+    public string Type { get; init; } = "";
+    /// <summary>When the change happened.</summary>
+    public DateTimeOffset CreatedAt { get; init; }
+    /// <summary>Payload version, e.g. <c>2026-11-01</c>.</summary>
+    public string ApiVersion { get; init; } = "";
+}
+
+/// <summary>
+/// Thin payload: ids and key fields only. Call <c>Documents.GetAsync(DocumentId)</c> for the summary, text and history.
+/// </summary>
+/// <param name="DocumentId">The document.</param>
+/// <param name="Status">Pipeline status at the time of the event.</param>
+/// <param name="DepartmentId">The department it is routed to, if any.</param>
+/// <param name="PreviousDepartmentId">On re-routing: the department it came from.</param>
+/// <param name="SuggestedDepartmentId">The AI's suggestion, once analyzed.</param>
+/// <param name="Priority">AI-assessed priority, once analyzed.</param>
+/// <param name="Category">AI-assessed category, once analyzed.</param>
+/// <param name="Confidence">AI confidence 0–1, once analyzed.</param>
+/// <param name="Handling">Department handling state, once routed.</param>
+/// <param name="Deadline">Deadline found in the document, if any.</param>
+/// <param name="Actor">Who did it: a person, "API key: ...", the AI model or "system".</param>
+/// <param name="Url">Link to the document in the Smart Inbox web app.</param>
+public sealed record DocumentEventData(
+    Guid DocumentId, DocumentStatus Status, int? DepartmentId, int? PreviousDepartmentId, int? SuggestedDepartmentId,
+    Priority? Priority, DocumentCategory? Category, double? Confidence, HandlingStatus? Handling,
+    DateOnly? Deadline, string? Actor, string Url);
+
+/// <summary>An event about one document.</summary>
+public abstract record DocumentEvent : SmartInboxEvent
+{
+    /// <summary>The document and its key fields.</summary>
+    public DocumentEventData Data { get; init; } = null!;
+}
+
+/// <summary><c>document.received</c>: a document was uploaded.</summary>
+public sealed record DocumentReceivedEvent : DocumentEvent;
+/// <summary><c>document.analyzed</c>: analysis finished (status Analyzed or NeedsReview).</summary>
+public sealed record DocumentAnalyzedEvent : DocumentEvent;
+/// <summary><c>document.analysis_failed</c>: analysis failed.</summary>
+public sealed record DocumentAnalysisFailedEvent : DocumentEvent;
+/// <summary><c>document.routed</c>: the desk routed or re-routed it.</summary>
+public sealed record DocumentRoutedEvent : DocumentEvent;
+/// <summary><c>document.acknowledged</c>: the department acknowledged it.</summary>
+public sealed record DocumentAcknowledgedEvent : DocumentEvent;
+/// <summary><c>document.closed</c>: the department closed it.</summary>
+public sealed record DocumentClosedEvent : DocumentEvent;
+/// <summary><c>document.reopened</c>: the department reopened it.</summary>
+public sealed record DocumentReopenedEvent : DocumentEvent;
+/// <summary><c>deadline.approaching</c>: an open document is due within two days.</summary>
+public sealed record DeadlineApproachingEvent : DocumentEvent;
+
+/// <summary><c>webhook.ping</c>: an admin clicked "Send test".</summary>
+public sealed record WebhookPingEvent : SmartInboxEvent
+{
+    /// <summary>Free-form test data.</summary>
+    public JsonElement Data { get; init; }
+}
+
+/// <summary>An event type this SDK version doesn't know yet. Upgrade the package to get a typed record.</summary>
+public sealed record UnknownEvent : SmartInboxEvent
+{
+    /// <summary>The raw <c>data</c> object.</summary>
+    public JsonElement Data { get; init; }
+}

@@ -188,6 +188,62 @@ export interface UserRow {
   lastSignInAt: string | null
 }
 
+export interface ApiKeyRow {
+  id: number
+  name: string
+  prefix: string
+  role: Role
+  departmentId: number | null
+  createdBy: string | null
+  createdAt: string
+  expiresAt: string | null
+  lastUsedAt: string | null
+  revokedAt: string | null
+}
+
+export type DeliveryStatus = 'Pending' | 'Delivered' | 'Failed'
+
+export interface WebhookEndpoint {
+  id: number
+  url: string
+  description: string | null
+  events: string[]
+  departmentId: number | null
+  enabled: boolean
+  consecutiveFailures: number
+  disabledReason: string | null
+  createdBy: string | null
+  createdAt: string
+  rotationInProgress: boolean
+  lastDelivery: { status: DeliveryStatus; statusCode: number | null; at: string } | null
+  deliveries7d: number
+  successRate7d: number | null
+}
+
+export interface WebhookDelivery {
+  id: number
+  eventId: string
+  eventType: string
+  status: DeliveryStatus
+  attempts: number
+  nextAttemptAt: string | null
+  lastStatusCode: number | null
+  lastError: string | null
+  lastResponseSnippet: string | null
+  durationMs: number | null
+  createdAt: string
+  deliveredAt: string | null
+  payload: string
+}
+
+export interface WebhookEndpointBody {
+  url: string
+  description: string | null
+  events: string[] | null
+  departmentId: number | null
+  enabled: boolean
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -285,6 +341,19 @@ export const api = {
   setPassword: (id: string, password: string) => request<void>(`/api/users/${id}/password`, json('POST', { password })),
   setDepartmentContacts: (id: number, email: string | null, headEmail: string | null) =>
     request<void>(`/api/departments/${id}/contacts`, json('PUT', { email, headEmail })),
+  apiKeys: () => request<ApiKeyRow[]>('/api/api-keys'),
+  createApiKey: (body: { name: string; role: Role; departmentId: number | null; expiresAt: string | null }) =>
+    request<{ key: ApiKeyRow; secret: string }>('/api/api-keys', json('POST', body)),
+  revokeApiKey: (id: number) => request<void>(`/api/api-keys/${id}`, { method: 'DELETE' }),
+  webhookEvents: () => request<string[]>('/api/webhooks/events'),
+  webhooks: () => request<WebhookEndpoint[]>('/api/webhooks'),
+  createWebhook: (body: WebhookEndpointBody) => request<{ endpoint: WebhookEndpoint; secret: string }>('/api/webhooks', json('POST', body)),
+  updateWebhook: (id: number, body: WebhookEndpointBody) => request<void>(`/api/webhooks/${id}`, json('PUT', body)),
+  deleteWebhook: (id: number) => request<void>(`/api/webhooks/${id}`, { method: 'DELETE' }),
+  rotateWebhookSecret: (id: number) => request<{ endpoint: WebhookEndpoint; secret: string }>(`/api/webhooks/${id}/rotate-secret`, { method: 'POST' }),
+  pingWebhook: (id: number) => request<WebhookDelivery>(`/api/webhooks/${id}/ping`, { method: 'POST' }),
+  webhookDeliveries: (id: number, page: number) => request<Paged<WebhookDelivery>>(`/api/webhooks/${id}/deliveries?page=${page}`),
+  redeliver: (deliveryId: number) => request<WebhookDelivery>(`/api/webhooks/deliveries/${deliveryId}/redeliver`, { method: 'POST' }),
 }
 
 function json(method: string, body: unknown): RequestInit {

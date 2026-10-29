@@ -1,0 +1,34 @@
+name: Publish SDK
+
+# Push a tag like sdk-v0.1.0 (matching <Version> in sdk/dotnet/Directory.Build.props) to publish to NuGet.
+# Needs the repository secret NUGET_API_KEY.
+on:
+  push:
+    tags: ['sdk-v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Check the tag matches the package version
+        run: |
+          version=$(grep -oP '(?<=<Version>)[^<]+' sdk/dotnet/Directory.Build.props)
+          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test tests/SmartInbox.Client.Tests --no-build -c Release
+
+      - run: dotnet pack sdk/dotnet/src/SmartInbox.Client --no-build -c Release -o out
+      - run: dotnet pack sdk/dotnet/src/SmartInbox.Client.AspNetCore --no-build -c Release -o out
+
+      - name: Push to NuGet
+        run: dotnet nuget push "out/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -16,6 +16,10 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       - run: dotnet test tests/SmartInbox.UnitTests --no-build -c Release
+      # SDK against the real API in-process (in-memory DB, rule-based AI), incl. a real webhook delivery
+      - run: dotnet test tests/SmartInbox.Client.Tests --no-build -c Release
+      # MCP server tools, permissions, prompt-injection handling and both transports, against the same in-process API
+      - run: dotnet test tests/SmartInbox.Mcp.Tests --no-build -c Release
 
   web:
     runs-on: ubuntu-latest

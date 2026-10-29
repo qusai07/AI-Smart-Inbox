@@ -9,10 +9,12 @@ public class DocumentService(
     IDocumentQueue queue,
     IInboxNotifier notifier,
     ICurrentUser? currentUser = null,
-    NotificationOptions? notificationOptions = null)
+    NotificationOptions? notificationOptions = null,
+    IWebhookPublisher? webhooks = null)
 {
     private readonly ICurrentUser _user = currentUser ?? SystemUser.Instance;
     private readonly NotificationOptions _notificationOptions = notificationOptions ?? new NotificationOptions();
+    private readonly IWebhookPublisher _webhooks = webhooks ?? NullWebhookPublisher.Instance;
 
     /// <summary>Documents the current user may see: everything, or only their department's.</summary>
     private IQueryable<Document> Visible(IQueryable<Document> query) => query.VisibleTo(_user);
@@ -30,6 +32,7 @@ public class DocumentService(
         };
         db.Documents.Add(doc);
         db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.Uploaded, Actor = doc.UploadedBy });
+        await _webhooks.PublishDocumentAsync(WebhookEvents.DocumentReceived, doc, doc.UploadedBy, ct);
         await db.SaveChangesAsync(ct);
         await queue.EnqueueAsync(doc.Id, ct);
         return doc;
@@ -186,6 +189,7 @@ public class DocumentService(
         var departmentEmail = await db.Departments.Where(x => x.Id == req.DepartmentId).Select(x => x.Email).FirstOrDefaultAsync(ct);
         if (!string.IsNullOrWhiteSpace(departmentEmail))
             db.Notifications.Add(new Notification { DocumentId = d.Id, DepartmentId = req.DepartmentId, To = departmentEmail });
+        await _webhooks.PublishDocumentAsync(WebhookEvents.DocumentRouted, d, _user.Name ?? decidedBy, ct, previousDepartment);
 
         await db.SaveChangesAsync(ct);
         // The old department must hear about it too: the document just left its inbox.
@@ -208,7 +212,7 @@ public class DocumentService(
 
     private async Task<HandlingOutcome> SetHandlingAsync(Guid id, HandlingStatus status, DocumentEventType eventType, string? note, CancellationToken ct)
     {
-        var d = await db.Documents.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var d = await db.Documents.Include(x => x.Analysis).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (d is null) return HandlingOutcome.NotFound;
         if (d.AssignedDepartmentId is null) return HandlingOutcome.NotRouted;
         if (_user.RestrictedToDepartment is { } own && own != d.AssignedDepartmentId) return HandlingOutcome.Forbidden;
@@ -222,10 +226,19 @@ public class DocumentService(
             DocumentId = d.Id, Type = eventType, Actor = _user.Name, DepartmentId = d.AssignedDepartmentId, Note = note,
         });
         if (eventType == DocumentEventType.Closed) await QueueClosureEmailAsync(d, ct);
+        await _webhooks.PublishDocumentAsync(WebhookEventFor(eventType), d, _user.Name, ct);
         await db.SaveChangesAsync(ct);
         await notifier.DocumentStatusChangedAsync(id, d.Status, Audience.Of(d.AssignedDepartmentId), ct);
         return HandlingOutcome.Ok;
     }
+
+    private static string WebhookEventFor(DocumentEventType type) => type switch
+    {
+        DocumentEventType.Acknowledged => WebhookEvents.DocumentAcknowledged,
+        DocumentEventType.Closed => WebhookEvents.DocumentClosed,
+        DocumentEventType.Reopened => WebhookEvents.DocumentReopened,
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+    };
 
     /// <summary>
     /// Close the loop: tell whoever routed the document that the department finished it.

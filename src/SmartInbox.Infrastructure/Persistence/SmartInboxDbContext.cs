@@ -16,6 +16,9 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<DocumentEvent> DocumentEvents => Set<DocumentEvent>();
     public DbSet<DocumentComment> Comments => Set<DocumentComment>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -97,6 +100,43 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.Property(x => x.Error).HasMaxLength(1000);
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<ApiKey>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(ApiKeyService.MaxNameLength);
+            e.Property(x => x.Prefix).HasMaxLength(20);
+            e.HasIndex(x => x.Prefix).IsUnique();
+            e.Property(x => x.Hash).HasMaxLength(64);
+            e.Property(x => x.Role).HasMaxLength(20);
+            e.Property(x => x.CreatedBy).HasMaxLength(200);
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<WebhookEndpoint>(e =>
+        {
+            e.Property(x => x.Url).HasMaxLength(WebhookRules.MaxUrlLength);
+            e.Property(x => x.Description).HasMaxLength(200);
+            e.Property(x => x.Secret).HasMaxLength(1000);
+            e.Property(x => x.PreviousSecret).HasMaxLength(1000);
+            e.Property(x => x.Events).HasMaxLength(1000);
+            e.Property(x => x.DisabledReason).HasMaxLength(500);
+            e.Property(x => x.CreatedBy).HasMaxLength(200);
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<WebhookDelivery>(e =>
+        {
+            e.Property(x => x.EventId).HasMaxLength(40);
+            e.Property(x => x.EventType).HasMaxLength(50);
+            e.Property(x => x.DedupKey).HasMaxLength(200);
+            e.HasIndex(x => new { x.EndpointId, x.DedupKey }).IsUnique().HasFilter("[DedupKey] IS NOT NULL");
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.LastError).HasMaxLength(1000);
+            e.Property(x => x.LastResponseSnippet).HasMaxLength(WebhookRules.MaxResponseSnippet);
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasIndex(x => new { x.EndpointId, x.CreatedAt });
+            e.HasOne<WebhookEndpoint>().WithMany().HasForeignKey(x => x.EndpointId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Department>(e =>

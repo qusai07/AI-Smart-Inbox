@@ -1,0 +1,103 @@
+using System.Text.Json.Serialization;
+
+namespace SmartInbox.Client;
+
+#pragma warning disable CS1591 // Enum members and record properties mirror the API; their names are the documentation.
+
+/// <summary>Where a document is in the pipeline.</summary>
+public enum DocumentStatus { Uploaded, Processing, Analyzed, Routed, NeedsReview, Failed }
+
+/// <summary>What the receiving department has done with a routed document.</summary>
+public enum HandlingStatus { New, Acknowledged, Closed }
+
+public enum Priority { Low, Normal, High, Urgent }
+
+public enum DocumentCategory { Request, Complaint, Invitation, Circular, Invoice, Legal, Other }
+
+/// <summary>Returned by an upload. Analysis runs in the background; see <see cref="DocumentsClient.WaitForAnalysisAsync"/>.</summary>
+public sealed record UploadedDocument(Guid Id, DocumentStatus Status);
+
+/// <summary>A row of the document list.</summary>
+public sealed record DocumentSummary(
+    Guid Id, string FileName, DocumentStatus Status, DateTime UploadedAt,
+    string? SummaryEn, string? SummaryAr, DocumentCategory? Category, Priority? Priority, string? Sender,
+    DateOnly? Deadline, int? SuggestedDepartmentId, int? FinalDepartmentId, double? Confidence,
+    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName);
+
+/// <summary>A document with its analysis, routing, handling and timeline.</summary>
+public sealed record DocumentDetail(
+    Guid Id, string FileName, string ContentType, DocumentStatus Status, DateTime UploadedAt,
+    string? ExtractedText, string? ErrorMessage, Analysis? Analysis, IReadOnlyList<ActionItem> ActionItems,
+    RoutingDecision? Routing, Handling? Handling, IReadOnlyList<TimelineEntry> Timeline,
+    Assignee? Assignee, IReadOnlyList<Comment> Comments)
+{
+    /// <summary>True once analysis has finished (successfully or not).</summary>
+    public bool IsAnalysisComplete => Status is not (DocumentStatus.Uploaded or DocumentStatus.Processing);
+}
+
+public sealed record Analysis(
+    string? SummaryEn, string? SummaryAr, DocumentCategory Category, Priority Priority, string? Language,
+    string? Sender, string? Recipient, string? ReferenceNumber, DateOnly? DocumentDate, DateOnly? Deadline,
+    int? SuggestedDepartmentId, double Confidence, string? Reasoning, string? ModelUsed, int TokensUsed);
+
+public sealed record ActionItem(int Id, string Description, DateOnly? DueDate);
+
+public sealed record RoutingDecision(int? SuggestedDepartmentId, int FinalDepartmentId, bool WasOverridden, string? Note, string? DecidedBy, DateTime DecidedAt);
+
+public sealed record Handling(int DepartmentId, HandlingStatus Status, DateTime? UpdatedAt, string? Note, string? By);
+
+/// <summary>One entry of the activity timeline. <see cref="Type"/> is kept as text so new entry types never break the client.</summary>
+public sealed record TimelineEntry(string Type, string? Actor, int? DepartmentId, string? Note, DateTime At);
+
+public sealed record Assignee(string Id, string Name);
+
+public sealed record Comment(long Id, string? AuthorId, string AuthorName, string Text, DateTime CreatedAt);
+
+/// <summary>A staff member who can be assigned documents.</summary>
+public sealed record Member(string Id, string DisplayName);
+
+public sealed record Department(int Id, string NameEn, string NameAr, string? Description, string? Keywords, string? Email, string? HeadEmail);
+
+public sealed record DepartmentWorkload(int DepartmentId, int New, int Acknowledged, int Closed, int Overdue);
+
+public sealed record CountByKey(string Key, int Count);
+
+public sealed record Stats(
+    int TotalDocuments, int NeedsReview, int Routed, int Failed, int Decisions, int AcceptedSuggestions,
+    double? RoutingAccuracy, double? AverageConfidence, long TotalTokens,
+    IReadOnlyList<CountByKey> ByStatus, IReadOnlyList<CountByKey> ByPriority,
+    IReadOnlyList<CountByKey> ByCategory, IReadOnlyList<CountByKey> ByDepartment);
+
+/// <summary>One page of results.</summary>
+public sealed record Page<T>(IReadOnlyList<T> Items, int Total, [property: JsonPropertyName("page")] int PageNumber, int PageSize)
+{
+    public bool HasMore => PageNumber * PageSize < Total;
+}
+
+/// <summary>A downloaded original file.</summary>
+public sealed record DocumentFile(Stream Content, string ContentType, string? FileName);
+
+#pragma warning restore CS1591
+
+/// <summary>Filters for listing documents. Unset properties don't filter.</summary>
+public sealed record DocumentListQuery
+{
+    /// <summary>Only documents in this status.</summary>
+    public DocumentStatus? Status { get; init; }
+    /// <summary>Only documents the AI rated with this priority.</summary>
+    public Priority? Priority { get; init; }
+    /// <summary>Routed to, or (if not routed yet) suggested for, this department.</summary>
+    public int? Department { get; init; }
+    /// <summary>Only documents routed to this department (its inbox).</summary>
+    public int? Assigned { get; init; }
+    /// <summary>Only documents in this handling state.</summary>
+    public HandlingStatus? Handling { get; init; }
+    /// <summary>Only documents assigned to the key itself (rarely useful for keys; mirrors the web app's "Mine").</summary>
+    public bool Mine { get; init; }
+    /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
+    public string? Search { get; init; }
+    /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>
+    public int Page { get; init; } = 1;
+    /// <summary>Items per page, 1–100.</summary>
+    public int PageSize { get; init; } = 50;
+}
