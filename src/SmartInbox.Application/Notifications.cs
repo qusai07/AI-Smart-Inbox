@@ -82,17 +82,23 @@ public static class ClosedEmail
 /// <summary>Builds the bilingual routing email. All document-derived text is HTML-encoded.</summary>
 public static class RoutingEmail
 {
-    public static EmailMessage Build(string to, Document doc, Department department, string appBaseUrl)
+    /// <param name="assigned">True for the "assigned to you" variant sent to a staff member.</param>
+    public static EmailMessage Build(string to, Document doc, Department department, string appBaseUrl, bool assigned = false)
     {
         var a = doc.Analysis;
         var sender = a?.Sender ?? doc.FileName;
         var priority = a?.Priority ?? Priority.Normal;
         var link = $"{appBaseUrl.TrimEnd('/')}/documents/{doc.Id}";
         var urgentTag = priority is Priority.Urgent or Priority.High ? $"[{priority}] " : "";
-        var subject = Truncate($"{urgentTag}New correspondence for {department.NameEn}: {sender}", 200);
+        var subject = Truncate(assigned
+            ? $"{urgentTag}Assigned to you: {sender}"
+            : $"{urgentTag}New correspondence for {department.NameEn}: {sender}", 200);
+        var eyebrow = assigned ? "Smart Inbox · Assigned to you · مُسند إليك" : "Smart Inbox · New correspondence";
 
         var text = new StringBuilder()
-            .AppendLine($"New correspondence routed to {department.NameEn} / {department.NameAr}")
+            .AppendLine(assigned
+                ? $"This correspondence for {department.NameEn} was assigned to you."
+                : $"New correspondence routed to {department.NameEn} / {department.NameAr}")
             .AppendLine()
             .AppendLine($"From: {sender}")
             .AppendLine($"Priority: {priority}")
@@ -118,7 +124,7 @@ public static class RoutingEmail
             <html><body style="margin:0;padding:24px;background:#f3f5f7;font-family:Segoe UI,Arial,sans-serif;color:#15202b">
               <table role="presentation" width="100%" style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e3e8ec;border-radius:12px">
                 <tr><td style="padding:20px 24px;border-bottom:1px solid #e3e8ec">
-                  <div style="font-size:12px;color:#8d99a6;text-transform:uppercase;letter-spacing:.06em">Smart Inbox · New correspondence</div>
+                  <div style="font-size:12px;color:#8d99a6;text-transform:uppercase;letter-spacing:.06em">{eyebrow}</div>
                   <div style="font-size:20px;font-weight:700;margin-top:4px">{E(department.NameEn)} <span style="color:#8d99a6;font-weight:400">/</span> <span dir="rtl">{E(department.NameAr)}</span></div>
                 </td></tr>
                 <tr><td style="padding:20px 24px">
@@ -236,6 +242,7 @@ public class NotificationDispatcher(
         {
             NotificationKind.Closed => ClosedEmail.Build(n.To, doc, department, options.AppBaseUrl),
             NotificationKind.Escalation => EscalationEmail.Build(n.To, doc, department, reminders?.Today() ?? DateOnly.FromDateTime(DateTime.UtcNow), options.AppBaseUrl),
+            NotificationKind.Assigned => RoutingEmail.Build(n.To, doc, department, options.AppBaseUrl, assigned: true),
             _ => RoutingEmail.Build(n.To, doc, department, options.AppBaseUrl),
         };
     }

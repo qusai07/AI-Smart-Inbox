@@ -20,6 +20,7 @@ const icons: Record<DocumentEvent['type'], string> = {
   EmailSent: 'pi pi-envelope',
   EmailFailed: 'pi pi-envelope',
   Escalated: 'pi pi-angle-double-up',
+  Assigned: 'pi pi-user',
 }
 
 function actor(e: DocumentEvent) {

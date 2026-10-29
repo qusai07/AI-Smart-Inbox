@@ -18,7 +18,6 @@ public record UpdateUserRequest(string DisplayName, string? Role, int? Departmen
 
 public record SetPasswordRequest(string Password);
 
-/// <summary>User administration. New Microsoft (Entra) users appear here with no role until an admin assigns one.</summary>
 [ApiController]
 [Route("api/users")]
 [Authorize(Policy = Policies.Admin)]

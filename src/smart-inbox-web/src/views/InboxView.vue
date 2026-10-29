@@ -239,6 +239,7 @@ onUnmounted(() => {
         <div class="line3">
           <span class="pill" :class="`s-${row.status}`">{{ t(`status.${row.status}`) }}</span>
           <span v-if="row.handling" class="pill" :class="`h-${row.handling}`">{{ t(`handling.${row.handling}`) }}</span>
+          <span v-if="row.assigneeName" class="assignee"><i class="pi pi-user" /> {{ row.assigneeName }}</span>
           <DeadlineChip :date="row.deadline" :done="row.status === 'Routed'" />
         </div>
       </div>
@@ -469,6 +470,13 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 .route {
   display: flex;
   align-items: center;

@@ -19,13 +19,14 @@ public class DepartmentsController(IAppDbContext db, DocumentService documents) 
     public async Task<IReadOnlyList<Department>> Get(CancellationToken ct) =>
         await db.Departments.AsNoTracking().OrderBy(d => d.Id).ToListAsync(ct);
 
-    /// <summary>New / acknowledged / closed / overdue counts per department (own department only for department users).</summary>
     [HttpGet("workload")]
     public Task<IReadOnlyList<DepartmentWorkloadDto>> Workload(CancellationToken ct) => documents.GetWorkloadAsync(ct);
 
-    /// <summary>
-    /// Email = routing notifications and daily digest; HeadEmail = escalations for overdue items. Empty = none.
-    /// </summary>
+    [HttpGet("{id:int}/members")]
+    public async Task<ActionResult<IReadOnlyList<MemberDto>>> Members(int id, [FromServices] CollaborationService collaboration, CancellationToken ct) =>
+        await collaboration.MembersAsync(id, ct) is { } members ? Ok(members) : NotFound();
+
+
     [HttpPut("{id:int}/contacts")]
     [Authorize(Policy = Policies.Admin)]
     public async Task<IActionResult> SetContacts(int id, UpdateDepartmentContactsRequest request, CancellationToken ct)

@@ -94,6 +94,7 @@ public static class AuthSetup
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
         return services;
     }
 }

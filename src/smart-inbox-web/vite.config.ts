@@ -7,6 +7,20 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Libraries change less often than app code: separate files that browsers can cache across deploys.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            if (id.includes('@primeuix')) return 'primevue-theme'
+            if (id.includes('primevue')) return 'primevue'
+            if (id.includes('@microsoft/signalr')) return 'signalr'
+            if (/node_modules\/(@vue|vue|vue-router|vue-i18n|@intlify|pinia)\//.test(id.replaceAll('\\', '/'))) return 'vue'
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': api,

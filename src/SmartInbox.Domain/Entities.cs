@@ -19,12 +19,27 @@ public class Document
     public DateTime? HandlingUpdatedAt { get; set; }
     public string? HandlingNote { get; set; }
     public string? HandlingBy { get; set; }
+    /// <summary>Staff member in the assigned department who owns the item (user id + display name snapshot).</summary>
+    public string? AssigneeId { get; set; }
+    public string? AssigneeName { get; set; }
 
     public DocumentAnalysis? Analysis { get; set; }
     public List<ActionItem> ActionItems { get; set; } = [];
     public List<RoutingDecision> RoutingDecisions { get; set; } = [];
     public List<Notification> Notifications { get; set; } = [];
     public List<DocumentEvent> Events { get; set; } = [];
+    public List<DocumentComment> Comments { get; set; } = [];
+}
+
+/// <summary>Internal discussion on a document. Immutable, so it doubles as an audit trail.</summary>
+public class DocumentComment
+{
+    public long Id { get; set; }
+    public Guid DocumentId { get; set; }
+    public string? AuthorId { get; set; }
+    public required string AuthorName { get; set; }
+    public required string Text { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>Append-only history: what happened to a document, who did it and when.</summary>

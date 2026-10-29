@@ -15,8 +15,7 @@ public class DocumentService(
     private readonly NotificationOptions _notificationOptions = notificationOptions ?? new NotificationOptions();
 
     /// <summary>Documents the current user may see: everything, or only their department's.</summary>
-    private IQueryable<Document> Visible(IQueryable<Document> query) =>
-        _user.RestrictedToDepartment is { } own ? query.Where(d => d.AssignedDepartmentId == own) : query;
+    private IQueryable<Document> Visible(IQueryable<Document> query) => query.VisibleTo(_user);
 
     public async Task<Document> UploadAsync(Stream content, string fileName, string contentType, string? uploadedBy, CancellationToken ct)
     {
@@ -52,6 +51,7 @@ public class DocumentService(
             query = query.Where(d => (d.AssignedDepartmentId ?? d.Analysis!.SuggestedDepartmentId) == dep);
         if (q.Assigned is { } assigned) query = query.Where(d => d.AssignedDepartmentId == assigned);
         if (q.Handling is { } handling) query = query.Where(d => d.Handling == handling);
+        if (q.Mine) query = _user.Id is { } me ? query.Where(d => d.AssigneeId == me) : query.Where(d => false);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
             var term = q.Q.Trim();
@@ -72,17 +72,21 @@ public class DocumentService(
             .OrderByDescending(d => d.UploadedAt)
             .Skip((page - 1) * size)
             .Take(size)
+            // Not every document has an analysis yet (processing / failed): every field checks it explicitly.
             .Select(d => new DocumentListItemDto(
                 d.Id, d.FileName, d.Status, d.UploadedAt,
-                d.Analysis!.SummaryEn, d.Analysis.SummaryAr,
+                d.Analysis != null ? d.Analysis.SummaryEn : null,
+                d.Analysis != null ? d.Analysis.SummaryAr : null,
                 d.Analysis != null ? d.Analysis.Category : null,
                 d.Analysis != null ? d.Analysis.Priority : null,
-                d.Analysis.Sender,
-                d.Analysis.Deadline,
-                d.Analysis.SuggestedDepartmentId,
+                d.Analysis != null ? d.Analysis.Sender : null,
+                d.Analysis != null ? d.Analysis.Deadline : null,
+                d.Analysis != null ? d.Analysis.SuggestedDepartmentId : null,
                 d.AssignedDepartmentId,
                 d.Analysis != null ? d.Analysis.Confidence : null,
-                d.Handling))
+                d.Handling,
+                d.AssigneeId,
+                d.AssigneeName))
             .ToListAsync(ct);
 
         return new PagedResult<DocumentListItemDto>(items, total, page, size);
@@ -96,6 +100,7 @@ public class DocumentService(
             .Include(x => x.RoutingDecisions)
             .Include(x => x.Notifications)
             .Include(x => x.Events)
+            .Include(x => x.Comments)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (d is null) return null;
 
@@ -113,7 +118,9 @@ public class DocumentService(
             d.Notifications.OrderByDescending(n => n.CreatedAt)
                 .Select(n => new NotificationDto(n.DepartmentId, n.Kind, n.To, n.Status, n.Attempts, n.Error, n.CreatedAt, n.SentAt)).ToList(),
             d.Events.OrderBy(e => e.At).ThenBy(e => e.Id)
-                .Select(e => new DocumentEventDto(e.Type, e.Actor, e.DepartmentId, e.Note, e.At)).ToList());
+                .Select(e => new DocumentEventDto(e.Type, e.Actor, e.DepartmentId, e.Note, e.At)).ToList(),
+            d.AssigneeId is null ? null : new AssigneeDto(d.AssigneeId, d.AssigneeName ?? ""),
+            d.Comments.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).Select(CommentDto.From).ToList());
     }
 
     public async Task<(Stream Content, string ContentType, string FileName)?> OpenFileAsync(Guid id, CancellationToken ct)
@@ -122,16 +129,20 @@ public class DocumentService(
         return d is null ? null : (storage.Open(d.StoragePath), d.ContentType, d.FileName);
     }
 
-    public async Task<bool> ReanalyzeAsync(Guid id, CancellationToken ct)
+    public enum ReanalyzeOutcome { Accepted, NotFound, Busy }
+
+    public async Task<ReanalyzeOutcome> ReanalyzeAsync(Guid id, CancellationToken ct)
     {
         var d = await db.Documents.FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (d is null) return false;
+        if (d is null) return ReanalyzeOutcome.NotFound;
+        // Already queued or running (double-click, two clerks, client retry). The queue de-duplicates too.
+        if (d.Status is DocumentStatus.Processing or DocumentStatus.Uploaded) return ReanalyzeOutcome.Busy;
         d.Status = DocumentStatus.Processing;
         d.ErrorMessage = null;
         await db.SaveChangesAsync(ct);
-        await notifier.DocumentStatusChangedAsync(id, d.Status, ct);
+        await notifier.DocumentStatusChangedAsync(id, d.Status, Audience.Of(d.AssignedDepartmentId), ct);
         await queue.EnqueueAsync(id, ct);
-        return true;
+        return ReanalyzeOutcome.Accepted;
     }
 
     public enum RouteOutcome { Ok, NotFound, UnknownDepartment, NotReady }
@@ -156,12 +167,15 @@ public class DocumentService(
             DecidedByEmail = _user.Email,
         });
         d.Status = DocumentStatus.Routed;
+        var previousDepartment = d.AssignedDepartmentId;
         // (Re)routing puts it in the receiving department's inbox as New, even if another department had closed it.
         d.AssignedDepartmentId = req.DepartmentId;
         d.Handling = HandlingStatus.New;
         d.HandlingUpdatedAt = DateTime.UtcNow;
         d.HandlingNote = null;
         d.HandlingBy = null;
+        d.AssigneeId = null;      // the new department assigns its own people
+        d.AssigneeName = null;
         db.DocumentEvents.Add(new DocumentEvent
         {
             DocumentId = d.Id, Type = DocumentEventType.Routed, Actor = _user.Name ?? decidedBy,
@@ -174,7 +188,8 @@ public class DocumentService(
             db.Notifications.Add(new Notification { DocumentId = d.Id, DepartmentId = req.DepartmentId, To = departmentEmail });
 
         await db.SaveChangesAsync(ct);
-        await notifier.DocumentStatusChangedAsync(id, d.Status, ct);
+        // The old department must hear about it too: the document just left its inbox.
+        await notifier.DocumentStatusChangedAsync(id, d.Status, Audience.Of(previousDepartment, d.AssignedDepartmentId), ct);
         return RouteOutcome.Ok;
     }
 
@@ -208,7 +223,7 @@ public class DocumentService(
         });
         if (eventType == DocumentEventType.Closed) await QueueClosureEmailAsync(d, ct);
         await db.SaveChangesAsync(ct);
-        await notifier.DocumentStatusChangedAsync(id, d.Status, ct);
+        await notifier.DocumentStatusChangedAsync(id, d.Status, Audience.Of(d.AssignedDepartmentId), ct);
         return HandlingOutcome.Ok;
     }
 

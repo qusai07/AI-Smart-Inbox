@@ -15,12 +15,8 @@ public record MeDto(string Id, string DisplayName, string? Email, string? Role, 
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(
-    SignInManager<AppUser> signIn,
-    UserManager<AppUser> users,
-    IOptions<EntraOptions> entra,
-    ILogger<AuthController> logger) : ControllerBase
-{
+public class AuthController(SignInManager<AppUser> signIn,UserManager<AppUser> users,IOptions<EntraOptions> entra,ILogger<AuthController> logger) : ControllerBase
+    {
     [AllowAnonymous]
     [HttpGet("providers")]
     public object Providers() => new { local = true, entra = entra.Value.Enabled };
@@ -29,11 +25,13 @@ public class AuthController(
     [HttpPost("login")]
     public async Task<ActionResult<MeDto>> Login(LoginRequest request)
     {
-        // Same message for unknown email and wrong password, so accounts can't be probed.
         var user = await users.FindByEmailAsync(request.Email.Trim());
         if (user is null) return Problem("Invalid email or password.", statusCode: 401);
 
         var result = await signIn.PasswordSignInAsync(user, request.Password, isPersistent: true, lockoutOnFailure: true);
+        // Admins disable accounts with a permanent lockout; don't tell those users to "try again in a few minutes".
+        if (result.IsLockedOut && user.LockoutEnd > DateTimeOffset.UtcNow.AddYears(50))
+            return Problem("This account has been disabled. Contact your administrator.", statusCode: 403);
         if (result.IsLockedOut) return Problem("Too many failed attempts. Try again in a few minutes.", statusCode: 429);
         if (!result.Succeeded) return Problem("Invalid email or password.", statusCode: 401);
 

@@ -30,7 +30,8 @@ public enum DocumentEventType
     Reopened,
     EmailSent,
     EmailFailed,
-    Escalated
+    Escalated,
+    Assigned
 }
 
 public enum NotificationKind
@@ -42,7 +43,9 @@ public enum NotificationKind
     /// <summary>Daily list of a department's items that are due soon or overdue (no single document).</summary>
     Digest,
     /// <summary>To the department head: an item is past its deadline and still open.</summary>
-    Escalation
+    Escalation,
+    /// <summary>To a staff member: an item was assigned to you.</summary>
+    Assigned
 }
 
 public enum NotificationStatus

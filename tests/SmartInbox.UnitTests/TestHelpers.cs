@@ -63,10 +63,12 @@ internal class NullQueue : IDocumentQueue
 internal class RecordingNotifier : IInboxNotifier
 {
     public List<(Guid Id, DocumentStatus Status)> Events { get; } = [];
+    public List<IReadOnlyCollection<int>> Audiences { get; } = [];
 
-    public Task DocumentStatusChangedAsync(Guid documentId, DocumentStatus status, CancellationToken ct = default)
+    public Task DocumentStatusChangedAsync(Guid documentId, DocumentStatus status, IReadOnlyCollection<int> departmentIds, CancellationToken ct = default)
     {
         Events.Add((documentId, status));
+        Audiences.Add(departmentIds);
         return Task.CompletedTask;
     }
 }

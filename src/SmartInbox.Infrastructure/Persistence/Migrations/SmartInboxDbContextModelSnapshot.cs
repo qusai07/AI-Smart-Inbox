@@ -298,6 +298,14 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.Property<int?>("AssignedDepartmentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssigneeId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AssigneeName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -348,6 +356,8 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssigneeId");
 
                     b.HasIndex("Status");
 
@@ -429,6 +439,41 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasIndex("SuggestedDepartmentId");
 
                     b.ToTable("Analyses");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.DocumentComment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AuthorId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId", "CreatedAt");
+
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.DocumentEvent", b =>
@@ -744,6 +789,15 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.Navigation("SuggestedDepartment");
                 });
 
+            modelBuilder.Entity("SmartInbox.Domain.DocumentComment", b =>
+                {
+                    b.HasOne("SmartInbox.Domain.Document", null)
+                        .WithMany("Comments")
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SmartInbox.Domain.DocumentEvent", b =>
                 {
                     b.HasOne("SmartInbox.Domain.Document", null)
@@ -796,6 +850,8 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.Navigation("ActionItems");
 
                     b.Navigation("Analysis");
+
+                    b.Navigation("Comments");
 
                     b.Navigation("Events");
 

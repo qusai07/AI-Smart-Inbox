@@ -12,10 +12,22 @@ public interface IAppDbContext
     DbSet<RoutingDecision> RoutingDecisions { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<DocumentEvent> DocumentEvents { get; }
+    DbSet<DocumentComment> Comments { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 
 public record EmailMessage(string To, string Subject, string Html, string Text);
+
+/// <summary>A person who can be assigned work.</summary>
+public record DirectoryUser(string Id, string DisplayName, string? Email, string? Role, int? DepartmentId);
+
+/// <summary>Looks up users (backed by Identity in the API).</summary>
+public interface IUserDirectory
+{
+    Task<DirectoryUser?> FindAsync(string id, CancellationToken ct = default);
+    /// <summary>Active department staff of one department.</summary>
+    Task<IReadOnlyList<DirectoryUser>> DepartmentMembersAsync(int departmentId, CancellationToken ct = default);
+}
 
 public interface IEmailSender
 {
@@ -58,7 +70,18 @@ public interface IDocumentQueue
 
 public interface IInboxNotifier
 {
-    Task DocumentStatusChangedAsync(Guid documentId, DocumentStatus status, CancellationToken ct = default);
+    /// <summary>
+    /// Tells the correspondence desk (always) and the given departments that a document changed.
+    /// Department staff only ever hear about their own department's documents.
+    /// </summary>
+    Task DocumentStatusChangedAsync(Guid documentId, DocumentStatus status, IReadOnlyCollection<int> departmentIds, CancellationToken ct = default);
+}
+
+public static class Audience
+{
+    /// <summary>The distinct, non-null department ids that should receive a live update.</summary>
+    public static IReadOnlyCollection<int> Of(params int?[] departmentIds) =>
+        departmentIds.Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToArray();
 }
 
 public record AiActionItem(string Description, DateOnly? DueDate);

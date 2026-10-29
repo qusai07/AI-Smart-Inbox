@@ -11,6 +11,8 @@ public static class DependencyInjection
         services.AddScoped<DocumentProcessor>();
         services.AddScoped<NotificationDispatcher>();
         services.AddScoped<ReminderService>();
+        services.AddScoped<CollaborationService>();
+        services.AddScoped<IValidator<CommentRequest>, CommentRequestValidator>();
         services.AddScoped<IValidator<RouteRequest>, RouteRequestValidator>();
         services.AddScoped<IValidator<CloseRequest>, CloseRequestValidator>();
         return services;

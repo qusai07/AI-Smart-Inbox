@@ -122,6 +122,6 @@ public class DocumentProcessor(
     {
         doc.Status = status;
         await db.SaveChangesAsync(ct);
-        await notifier.DocumentStatusChangedAsync(doc.Id, status, ct);
+        await notifier.DocumentStatusChangedAsync(doc.Id, status, Audience.Of(doc.AssignedDepartmentId), ct);
     }
 }

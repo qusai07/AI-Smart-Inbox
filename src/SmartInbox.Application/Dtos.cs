@@ -16,7 +16,9 @@ public record DocumentListItemDto(
     int? SuggestedDepartmentId,
     int? FinalDepartmentId,
     double? Confidence,
-    HandlingStatus? Handling);
+    HandlingStatus? Handling,
+    string? AssigneeId,
+    string? AssigneeName);
 
 public record DocumentDetailDto(
     Guid Id,
@@ -31,7 +33,22 @@ public record DocumentDetailDto(
     RoutingDecisionDto? Routing,
     HandlingDto? Handling,
     IReadOnlyList<NotificationDto> Notifications,
-    IReadOnlyList<DocumentEventDto> Timeline);
+    IReadOnlyList<DocumentEventDto> Timeline,
+    AssigneeDto? Assignee,
+    IReadOnlyList<CommentDto> Comments);
+
+public record AssigneeDto(string Id, string Name);
+
+public record CommentDto(long Id, string? AuthorId, string AuthorName, string Text, DateTime CreatedAt)
+{
+    public static CommentDto From(DocumentComment c) => new(c.Id, c.AuthorId, c.AuthorName, c.Text, c.CreatedAt);
+}
+
+public record AssignRequest(string? UserId);
+
+public record CommentRequest(string Text);
+
+public record MemberDto(string Id, string DisplayName);
 
 public record DocumentEventDto(DocumentEventType Type, string? Actor, int? DepartmentId, string? Note, DateTime At);
 
@@ -79,6 +96,8 @@ public record DocumentQuery(
     /// <summary>Department inbox: only documents routed to this department.</summary>
     int? Assigned = null,
     HandlingStatus? Handling = null,
+    /// <summary>Only items assigned to the current user.</summary>
+    bool Mine = false,
     string? Q = null,
     int Page = 1,
     int PageSize = 20);

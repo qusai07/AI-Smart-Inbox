@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import InboxView from './views/InboxView.vue'
 import { useAuth } from './stores/auth'
 
 declare module 'vue-router' {
@@ -17,7 +16,7 @@ export const router = createRouter({
   routes: [
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { public: true } },
     { path: '/pending', name: 'pending', component: () => import('./views/PendingView.vue') },
-    { path: '/', name: 'inbox', component: InboxView, meta: { desk: true } },
+    { path: '/', name: 'inbox', component: () => import('./views/InboxView.vue'), meta: { desk: true } },
     { path: '/documents/:id', name: 'document', component: () => import('./views/DocumentView.vue'), props: true },
     { path: '/dashboard', name: 'dashboard', component: () => import('./views/DashboardView.vue'), meta: { desk: true } },
     {

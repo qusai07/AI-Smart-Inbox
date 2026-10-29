@@ -7,7 +7,7 @@ export type HandlingStatus = 'New' | 'Acknowledged' | 'Closed'
 export const STATUSES: DocumentStatus[] = ['Processing', 'Analyzed', 'NeedsReview', 'Routed', 'Failed']
 
 export interface DocumentEvent {
-  type: 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated'
+  type: 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated' | 'Assigned'
   actor: string | null
   departmentId: number | null
   note: string | null
@@ -48,6 +48,21 @@ export interface DocumentListItem {
   finalDepartmentId: number | null
   confidence: number | null
   handling: HandlingStatus | null
+  assigneeId: string | null
+  assigneeName: string | null
+}
+
+export interface Comment {
+  id: number
+  authorId: string | null
+  authorName: string
+  text: string
+  createdAt: string
+}
+
+export interface Member {
+  id: string
+  displayName: string
 }
 
 export interface Analysis {
@@ -104,6 +119,8 @@ export interface DocumentDetail {
     sentAt: string | null
   }[]
   timeline: DocumentEvent[]
+  assignee: { id: string; name: string } | null
+  comments: Comment[]
 }
 
 export interface Paged<T> {
@@ -140,6 +157,7 @@ export interface DocumentFilter {
   department?: number | null
   assigned?: number | null
   handling?: HandlingStatus | null
+  mine?: boolean | null
   q?: string
   page?: number
   pageSize?: number
@@ -246,6 +264,10 @@ export const api = {
     }),
 
   reopen: (id: string) => request<void>(`/api/documents/${id}/reopen`, { method: 'POST' }),
+
+  members: (departmentId: number) => request<Member[]>(`/api/departments/${departmentId}/members`),
+  assign: (id: string, userId: string | null) => request<void>(`/api/documents/${id}/assign`, json('POST', { userId })),
+  comment: (id: string, text: string) => request<Comment>(`/api/documents/${id}/comments`, json('POST', { text })),
 
   // Auth
   providers: () => request<{ local: boolean; entra: boolean }>('/api/auth/providers'),

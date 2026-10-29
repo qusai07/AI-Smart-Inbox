@@ -15,6 +15,7 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<RoutingDecision> RoutingDecisions => Set<RoutingDecision>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<DocumentEvent> DocumentEvents => Set<DocumentEvent>();
+    public DbSet<DocumentComment> Comments => Set<DocumentComment>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -46,6 +47,10 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasMany(x => x.RoutingDecisions).WithOne().HasForeignKey(x => x.DocumentId);
             e.HasMany(x => x.Notifications).WithOne().HasForeignKey(x => x.DocumentId);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.DocumentId);
+            e.HasMany(x => x.Comments).WithOne().HasForeignKey(x => x.DocumentId);
+            e.Property(x => x.AssigneeId).HasMaxLength(450);
+            e.Property(x => x.AssigneeName).HasMaxLength(200);
+            e.HasIndex(x => x.AssigneeId);
         });
 
         b.Entity<DocumentAnalysis>(e =>
@@ -64,6 +69,14 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.Property(x => x.DecidedByEmail).HasMaxLength(320);
             e.HasOne(x => x.FinalDepartment).WithMany().HasForeignKey(x => x.FinalDepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<DocumentComment>(e =>
+        {
+            e.Property(x => x.AuthorId).HasMaxLength(450);
+            e.Property(x => x.AuthorName).HasMaxLength(200);
+            e.Property(x => x.Text).HasMaxLength(2000);
+            e.HasIndex(x => new { x.DocumentId, x.CreatedAt });
         });
 
         b.Entity<DocumentEvent>(e =>

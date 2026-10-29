@@ -50,7 +50,7 @@ flowchart LR
 4. **Uncertain documents are flagged, not guessed.** Below 0.6 confidence a document goes to *Needs review*, so a person decides. Above it, it's *Ready to route*. Browsers update live over SignalR.
 5. **The clerk decides.** One click accepts the suggestion; otherwise the clerk picks another department and adds a note. Each decision is stored as feedback, and the dashboard turns it into a real **AI routing accuracy** figure.
 6. **The department is notified.** An email (outbox with retries) goes to the department's address, and the document lands in its inbox as **New**.
-7. **The department works it:** **Acknowledge** (in progress) → **Close** with a note on what was done. Closing **emails the clerk who routed it**, including the note, which closes the loop. It can be reopened, or re-routed to another department, where it starts again as *New*.
+7. **The department works it.** The item is **assigned to a staff member**, who is emailed and finds it under *Assigned to me*. Colleagues coordinate in **internal comments**. Then **Acknowledge** (in progress) → **Close** with a note on what was done. Closing **emails the clerk who routed it**, including the note, which closes the loop. It can be reopened, or re-routed to another department, where it starts again as *New*.
 8. **Deadlines are watched.** Each morning a department gets a **digest** of its open items that are overdue or due within 3 days. When an item passes its deadline unclosed, it is **escalated** to the department head.
 9. **Everything is on the record.** The document's **activity timeline** shows who did what and when: received, analyzed, routed, emailed, acknowledged, closed, reopened.
 
@@ -59,7 +59,7 @@ flowchart LR
 | Role | Works in | Can |
 |---|---|---|
 | **Clerk** (correspondence desk) | Main inbox, dashboard | Upload, review AI results, route / re-route, re-analyze, see every department |
-| **Department staff** | Their department's inbox only | View, acknowledge, close and reopen their own department's documents |
+| **Department staff** | Their department's inbox, "Assigned to me" | View, assign within the department, comment, acknowledge, close and reopen their own department's documents |
 | **Admin** | Everything + `/admin` | Manage users, roles and department email addresses |
 
 ### Document states
@@ -77,7 +77,8 @@ flowchart LR
 | **Bilingual analysis** | Arabic and English summaries, plus category, priority, parties, reference, dates, deadline and action items |
 | **Routing with honest confidence** | One department plus a confidence score and reasoning; anything below 0.6 goes to human review |
 | **Free AI by default** | Offline rule engine, local LLM via Ollama, or Claude, with a **hybrid cost gate** that only sends uncertain documents to an LLM |
-| **Department inboxes** | New / In progress / Closed, with closing notes and overdue indicators |
+| **Department inboxes** | New / In progress / Closed / Assigned to me, with closing notes and overdue indicators |
+| **Assignment and comments** | Assign an item to a staff member of the department (they get an email); internal comment thread on every document, kept as part of the record |
 | **Email notifications** | Routing, "closed" report-back, daily deadline digest, and escalation of overdue items to the department head; transactional outbox with retries; local test mail server |
 | **Activity timeline** | Append-only history of every step, with who did it and when |
 | **Sign-in** | Local accounts (ASP.NET Core Identity) and Microsoft Entra ID; three roles enforced by the API |
@@ -104,7 +105,7 @@ Sign in with a demo account (password **`Demo#2026`**):
 | Email | Role |
 |---|---|
 | `clerk@mds.demo` | Correspondence desk: start here, upload a file from [`samples/`](samples/) |
-| `legal.user@mds.demo` | Legal Affairs department |
+| `legal.user@mds.demo` · `legal.user2@mds.demo` | Legal Affairs department (Omar, Huda) |
 | `hr.user@mds.demo` | Human Resources department |
 | `admin@mds.demo` | Administrator |
 
@@ -112,7 +113,7 @@ Sign in with a demo account (password **`Demo#2026`**):
 1. As the clerk, upload [`samples/en-04-court-notice.txt`](samples/en-04-court-notice.txt).
 2. Accept the suggestion (Legal Affairs).
 3. Check the email at http://localhost:5100.
-4. Sign in as `legal.user`, then acknowledge and close the document.
+4. Sign in as `legal.user`, assign the document to Huda, and leave a comment. Sign in as `legal.user2` (Huda): it's under *Assigned to me*. Close it with a note.
 5. As the clerk, open the document again and look at its timeline.
 
 ### Local development
@@ -269,6 +270,9 @@ All endpoints except sign-in require a session cookie.
 | `GET` | `/api/documents/{id}/file` | Member | Original file |
 | `POST` | `/api/documents/{id}/reanalyze` · `/route` | Desk | Re-run the AI · accept or override `{ departmentId, note }` |
 | `POST` | `/api/documents/{id}/acknowledge` · `/close` · `/reopen` | Member | Department handling (`close` takes `{ note }`) |
+| `POST` | `/api/documents/{id}/assign` | Member | `{ userId }`: staff of the document's department; `null` unassigns |
+| `POST` | `/api/documents/{id}/comments` | Member | `{ text }`: internal comment (max 2000 chars) |
+| `GET` | `/api/departments/{id}/members` | Member | Staff who can be assigned (own department only for department users) |
 | `GET` | `/api/departments` · `/workload` | Member | Departments · New/In progress/Closed/Overdue counts |
 | `PUT` | `/api/departments/{id}/contacts` | Admin | `{ email, headEmail }` for notifications, digests and escalations |
 | `GET` | `/api/stats` | Desk | Dashboard numbers |
@@ -280,7 +284,7 @@ All endpoints except sign-in require a session cookie.
 ### Next up
 - [x] **Close-the-loop email.** Tell the clerk who routed a document when the department closes it, including the closing note.
 - [x] **Deadline reminders and escalation.** A daily digest of items due soon; overdue items escalate to the department head.
-- [ ] **Assign to a person.** Departments assign items to individual staff, with internal comments on the document.
+- [x] **Assign to a person.** Departments assign items to individual staff, with internal comments on the document.
 - [ ] **Held-out eval set.** New letters the rule engine has never seen, for an honest accuracy figure.
 
 ### AI

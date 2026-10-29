@@ -38,6 +38,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Browsers must use the declared Content-Type, never guess one from the bytes (uploaded files are untrusted).
+app.Use((ctx, next) =>
+{
+    ctx.Response.Headers.XContentTypeOptions = "nosniff";
+    return next(ctx);
+});
+
 // Built Vue app (copied into wwwroot by the Docker build).
 app.UseDefaultFiles();
 app.UseStaticFiles();

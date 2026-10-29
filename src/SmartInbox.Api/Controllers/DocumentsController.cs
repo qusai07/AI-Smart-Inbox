@@ -6,10 +6,6 @@ using SmartInbox.Application;
 
 namespace SmartInbox.Api.Controllers;
 
-/// <summary>
-/// Members can read and handle documents; DocumentService limits department users to their own department.
-/// Upload, re-analyze and routing are for the correspondence desk only.
-/// </summary>
 [ApiController]
 [Route("api/documents")]
 [Authorize(Policy = Policies.Member)]
@@ -21,7 +17,6 @@ public class DocumentsController(DocumentService documents) : ControllerBase
         public string? Text { get; set; }
     }
 
-    /// <summary>Upload a file (multipart field "file") or pasted text (form field "text").</summary>
     [HttpPost]
     [Authorize(Policy = Policies.Desk)]
     [Consumes("multipart/form-data")]
@@ -67,13 +62,22 @@ public class DocumentsController(DocumentService documents) : ControllerBase
         if (await documents.OpenFileAsync(id, ct) is not { } file) return NotFound();
         // inline so PDFs and images preview in the browser.
         Response.Headers.ContentDisposition = $"inline; filename*=UTF-8''{Uri.EscapeDataString(file.FileName)}";
+        // Uploaded content is untrusted. nosniff is set globally; text, email and Word files are also sandboxed so
+        // nothing in them can run script on our origin. (A sandbox would break the browser's PDF/image viewer.)
+        if (file.ContentType is not ("application/pdf" or "image/png" or "image/jpeg"))
+            Response.Headers.ContentSecurityPolicy = "sandbox";
         return File(file.Content, file.ContentType);
     }
 
     [HttpPost("{id:guid}/reanalyze")]
     [Authorize(Policy = Policies.Desk)]
     public async Task<IActionResult> Reanalyze(Guid id, CancellationToken ct) =>
-        await documents.ReanalyzeAsync(id, ct) ? Accepted() : NotFound();
+        await documents.ReanalyzeAsync(id, ct) switch
+        {
+            DocumentService.ReanalyzeOutcome.Accepted => Accepted(),
+            DocumentService.ReanalyzeOutcome.NotFound => NotFound(),
+            _ => Problem("The document is already being analyzed.", statusCode: 409),
+        };
 
     [HttpPost("{id:guid}/route")]
     [Authorize(Policy = Policies.Desk)]
@@ -106,6 +110,25 @@ public class DocumentsController(DocumentService documents) : ControllerBase
     [HttpPost("{id:guid}/reopen")]
     public async Task<IActionResult> Reopen(Guid id, CancellationToken ct) =>
         HandlingResult(await documents.ReopenAsync(id, ct));
+
+    [HttpPost("{id:guid}/assign")]
+    public async Task<IActionResult> Assign(Guid id, AssignRequest request, [FromServices] CollaborationService collaboration, CancellationToken ct) =>
+        await collaboration.AssignAsync(id, request.UserId, ct) switch
+        {
+            CollaborationService.AssignOutcome.Ok => NoContent(),
+            CollaborationService.AssignOutcome.NotFound => NotFound(),
+            CollaborationService.AssignOutcome.NotRouted => Problem("The document has not been routed to a department yet.", statusCode: 409),
+            _ => Problem("That person is not staff of this document's department.", statusCode: 400),
+        };
+
+    [HttpPost("{id:guid}/comments")]
+    public async Task<ActionResult<CommentDto>> Comment(
+        Guid id, CommentRequest request, IValidator<CommentRequest> validator, [FromServices] CollaborationService collaboration, CancellationToken ct)
+    {
+        var validation = await validator.ValidateAsync(request, ct);
+        if (!validation.IsValid) return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        return await collaboration.AddCommentAsync(id, request.Text, ct) is { } comment ? comment : NotFound();
+    }
 
     private IActionResult HandlingResult(DocumentService.HandlingOutcome outcome) => outcome switch
     {

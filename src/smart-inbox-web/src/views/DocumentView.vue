@@ -9,6 +9,8 @@ import ConfidenceRing from '../components/ConfidenceRing.vue'
 import DeadlineChip from '../components/DeadlineChip.vue'
 import HandlingActions from '../components/HandlingActions.vue'
 import ActivityTimeline from '../components/ActivityTimeline.vue'
+import CommentThread from '../components/CommentThread.vue'
+import type { Member } from '../api'
 import { formatDate, formatDateTime } from '../components/Badges'
 import { api, type DocumentDetail } from '../api'
 import { onStatusChanged } from '../realtime'
@@ -54,6 +56,50 @@ const fileIcon = computed(() => {
   if (type === 'message/rfc822') return 'pi pi-envelope'
   return 'pi pi-file'
 })
+// ── Assignment ────────────────────────────────────────────────────
+const members = ref<Member[]>([])
+const membersFor = ref<number | null>(null)
+const assigning = ref(false)
+const canAssign = computed(
+  () => !!doc.value?.handling && (auth.isDesk || auth.me?.departmentId === doc.value.handling.departmentId),
+)
+const memberOptions = computed(() => {
+  const list = members.value.map((m) => ({ label: m.id === auth.me?.id ? `${m.displayName} (${t('work.me')})` : m.displayName, value: m.id }))
+  // Keep showing a current assignee who is no longer active.
+  const a = doc.value?.assignee
+  if (a && !list.some((o) => o.value === a.id)) list.unshift({ label: a.name, value: a.id })
+  return list
+})
+
+watch(
+  () => (canAssign.value ? doc.value?.handling?.departmentId : null),
+  async (dep) => {
+    if (!dep || membersFor.value === dep) return
+    membersFor.value = dep
+    try {
+      members.value = await api.members(dep)
+    } catch {
+      members.value = []
+    }
+  },
+)
+
+async function assign(userId: string | null) {
+  if (!doc.value || userId === (doc.value.assignee?.id ?? null)) return
+  assigning.value = true
+  try {
+    await api.assign(doc.value.id, userId)
+    const name = members.value.find((m) => m.id === userId)?.displayName
+    toast.add({ severity: 'success', summary: userId ? t('work.assigned', { name }) : t('work.unassignedDone'), life: 2500 })
+    stats.refreshSoon()
+    await load()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('errors.generic'), detail: (e as Error).message, life: 5000 })
+  } finally {
+    assigning.value = false
+  }
+}
+
 const latestEmail = computed(
   () => doc.value?.notifications.find((n) => n.kind === 'Routed' && n.departmentId === doc.value?.handling?.departmentId) ?? null,
 )
@@ -222,6 +268,24 @@ watch(() => props.id, load, { immediate: true })
                   {{ t('handling.openInbox') }} <i class="pi pi-arrow-right flip-rtl" />
                 </RouterLink>
               </div>
+              <div class="assignee-row">
+                <span class="muted small">{{ t('work.assignee') }}</span>
+                <Select
+                  v-if="canAssign"
+                  :model-value="doc.assignee?.id ?? null"
+                  :options="memberOptions"
+                  option-label="label"
+                  option-value="value"
+                  :placeholder="t('work.assignPlaceholder')"
+                  show-clear
+                  size="small"
+                  class="assignee-select"
+                  :loading="assigning"
+                  :disabled="assigning"
+                  @update:model-value="assign"
+                />
+                <strong v-else class="small">{{ doc.assignee?.name ?? t('work.unassigned') }}</strong>
+              </div>
               <p v-if="doc.handling.note" class="note" dir="auto">
                 <span class="muted">{{ t('handling.closedNote') }}:</span> {{ doc.handling.note }}
               </p>
@@ -332,6 +396,12 @@ watch(() => props.id, load, { immediate: true })
               </li>
             </ol>
             <p v-else class="muted small">{{ t('detail.noActionItems') }}</p>
+          </section>
+
+          <!-- Internal comments -->
+          <section class="card card-pad">
+            <h3 class="eyebrow">{{ t('work.comments') }} <span v-if="doc.comments.length" class="faint">· {{ doc.comments.length }}</span></h3>
+            <CommentThread :document-id="doc.id" :comments="doc.comments" @added="load" />
           </section>
 
           <!-- Activity -->
@@ -560,6 +630,15 @@ watch(() => props.id, load, { immediate: true })
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+.assignee-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.assignee-select {
+  min-width: 220px;
 }
 .dept-link {
   color: var(--brand);

@@ -10,6 +10,7 @@ import { api, type DocumentListItem, type HandlingStatus } from '../api'
 import { onStatusChanged } from '../realtime'
 import { useDepartments } from '../stores/departments'
 import { useStats } from '../stores/stats'
+import { useAuth } from '../stores/auth'
 
 const props = defineProps<{ departmentId: number }>()
 defineEmits<{ upload: [] }>()
@@ -17,8 +18,11 @@ defineEmits<{ upload: [] }>()
 const { t, locale } = useI18n()
 const departments = useDepartments()
 const stats = useStats()
+const auth = useAuth()
 
-const handling = ref<HandlingStatus | null>('New')
+type TabKey = HandlingStatus | 'All' | 'Mine'
+const tab = ref<TabKey>('New')
+const handling = computed<HandlingStatus | null>(() => (tab.value === 'All' || tab.value === 'Mine' ? null : tab.value))
 const page = ref(1)
 const pageSize = 20
 const rows = ref<DocumentListItem[]>([])
@@ -31,16 +35,20 @@ const name = computed(() => (department.value ? (locale.value === 'ar' ? departm
 const otherName = computed(() => (department.value ? (locale.value === 'ar' ? department.value.nameEn : department.value.nameAr) : ''))
 const workload = computed(() => stats.workloadFor(props.departmentId))
 const tabs = computed(() => [
-  { value: 'New' as const, label: t('handling.New'), count: workload.value.new },
-  { value: 'Acknowledged' as const, label: t('handling.Acknowledged'), count: workload.value.acknowledged },
-  { value: 'Closed' as const, label: t('handling.Closed'), count: workload.value.closed },
-  { value: null, label: t('handling.all'), count: workload.value.new + workload.value.acknowledged + workload.value.closed },
+  // Staff of this department get their personal queue first.
+  ...(auth.me?.departmentId === props.departmentId ? [{ value: 'Mine' as TabKey, label: t('work.mine'), count: undefined as number | undefined }] : []),
+  { value: 'New' as TabKey, label: t('handling.New'), count: workload.value.new },
+  { value: 'Acknowledged' as TabKey, label: t('handling.Acknowledged'), count: workload.value.acknowledged },
+  { value: 'Closed' as TabKey, label: t('handling.Closed'), count: workload.value.closed },
+  { value: 'All' as TabKey, label: t('handling.all'), count: workload.value.new + workload.value.acknowledged + workload.value.closed },
 ])
 
 async function load() {
   error.value = null
   try {
-    const result = await api.list({ assigned: props.departmentId, handling: handling.value, page: page.value, pageSize })
+    const result = await api.list({
+      assigned: props.departmentId, handling: handling.value, mine: tab.value === 'Mine' || null, page: page.value, pageSize,
+    })
     rows.value = result.items
     total.value = result.total
   } catch (e) {
@@ -50,8 +58,8 @@ async function load() {
   }
 }
 
-function setTab(value: HandlingStatus | null) {
-  handling.value = value
+function setTab(value: TabKey) {
+  tab.value = value
   page.value = 1
   loading.value = true
   load()
@@ -97,17 +105,18 @@ onUnmounted(() => {
 
   <div class="tabs" role="tablist">
     <button
-      v-for="tab in tabs"
-      :key="tab.label"
+      v-for="t2 in tabs"
+      :key="t2.label"
       type="button"
       role="tab"
       class="tab"
-      :class="{ active: handling === tab.value }"
-      :aria-selected="handling === tab.value"
-      @click="setTab(tab.value)"
+      :class="{ active: tab === t2.value }"
+      :aria-selected="tab === t2.value"
+      @click="setTab(t2.value)"
     >
-      {{ tab.label }}
-      <span v-if="tab.count" class="tab-count">{{ tab.count }}</span>
+      <i v-if="t2.value === 'Mine'" class="pi pi-user" />
+      {{ t2.label }}
+      <span v-if="t2.count" class="tab-count">{{ t2.count }}</span>
     </button>
   </div>
 
@@ -145,6 +154,9 @@ onUnmounted(() => {
       <p class="summary" dir="auto">{{ summary(row) }}</p>
       <div class="line3">
         <DeadlineChip :date="row.deadline" :done="row.handling === 'Closed'" />
+        <span v-if="row.assigneeName" class="assignee" :class="{ me: row.assigneeId === auth.me?.id }">
+          <i class="pi pi-user" /> {{ row.assigneeId === auth.me?.id ? t('work.me') : row.assigneeName }}
+        </span>
         <span class="grow" />
         <HandlingActions v-if="row.handling" :id="row.id" :status="row.handling" size="small" @changed="load" />
       </div>
@@ -285,6 +297,17 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+.assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.assignee.me {
+  color: var(--brand);
+  font-weight: 600;
 }
 .empty {
   display: flex;

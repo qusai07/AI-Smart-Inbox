@@ -26,6 +26,7 @@ public static class IdentitySeed
                 ("admin@mds.demo", "System Admin", Roles.Admin, null),
                 ("clerk@mds.demo", "Sara (Correspondence Desk)", Roles.Clerk, null),
                 ("legal.user@mds.demo", "Omar (Legal Affairs)", Roles.Department, 2),
+                ("legal.user2@mds.demo", "Huda (Legal Affairs)", Roles.Department, 2),
                 ("hr.user@mds.demo", "Mariam (Human Resources)", Roles.Department, 4),
             ];
             foreach (var u in demo) await EnsureUserAsync(users, u.Email, u.Name, password, u.Role, u.Dept, logger);

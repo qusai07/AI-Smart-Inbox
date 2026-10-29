@@ -28,6 +28,13 @@ public interface ICurrentUser
     int? RestrictedToDepartment => SeesEverything ? null : DepartmentId ?? -1;
 }
 
+public static class DocumentAccess
+{
+    /// <summary>Documents a user may see: everything for the desk, only their department's for department staff.</summary>
+    public static IQueryable<Domain.Document> VisibleTo(this IQueryable<Domain.Document> query, ICurrentUser user) =>
+        user.RestrictedToDepartment is { } own ? query.Where(d => d.AssignedDepartmentId == own) : query;
+}
+
 /// <summary>Background work and tests: full access, no person attached.</summary>
 public sealed class SystemUser : ICurrentUser
 {
