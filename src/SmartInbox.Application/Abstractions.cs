@@ -13,6 +13,9 @@ public interface IAppDbContext
     DbSet<Notification> Notifications { get; }
     DbSet<DocumentEvent> DocumentEvents { get; }
     DbSet<DocumentComment> Comments { get; }
+    DbSet<ApiKey> ApiKeys { get; }
+    DbSet<WebhookEndpoint> WebhookEndpoints { get; }
+    DbSet<WebhookDelivery> WebhookDeliveries { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 
@@ -27,6 +30,29 @@ public interface IUserDirectory
     Task<DirectoryUser?> FindAsync(string id, CancellationToken ct = default);
     /// <summary>Active department staff of one department.</summary>
     Task<IReadOnlyList<DirectoryUser>> DepartmentMembersAsync(int departmentId, CancellationToken ct = default);
+    /// <summary>Email addresses of active administrators.</summary>
+    Task<IReadOnlyList<string>> AdminEmailsAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<string>>([]);
+}
+
+/// <summary>Encrypts secrets stored in the database (ASP.NET Data Protection in production).</summary>
+public interface ISecretProtector
+{
+    string Protect(string plaintext);
+    string Unprotect(string protectedText);
+}
+
+public record WebhookRequest(string Url, IReadOnlyDictionary<string, string> Headers, string Body);
+
+/// <summary>Result of one HTTP attempt. StatusCode is null when no response arrived (timeout, DNS, blocked address).</summary>
+public record WebhookResponse(int? StatusCode, string? BodySnippet, string? Error, int DurationMs)
+{
+    public bool Succeeded => StatusCode is >= 200 and < 300;
+}
+
+/// <summary>Sends one webhook HTTP request (with SSRF protection and a timeout in production).</summary>
+public interface IWebhookTransport
+{
+    Task<WebhookResponse> SendAsync(WebhookRequest request, CancellationToken ct = default);
 }
 
 public interface IEmailSender

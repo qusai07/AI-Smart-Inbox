@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>SmartInbox.Client.AspNetCore</PackageId>
+    <Description>MapSmartInboxWebhooks: a verified Smart Inbox webhook endpoint for ASP.NET Core in one line.</Description>
+    <RootNamespace>SmartInbox.Client</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartInbox.Client\SmartInbox.Client.csproj" />
+  </ItemGroup>
+
+</Project>

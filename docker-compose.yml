@@ -22,6 +22,10 @@ services:
       Email__FromAddress: "${EMAIL_FROM:-smart-inbox@mds.demo}"
       Notifications__AppBaseUrl: "${APP_BASE_URL:-http://localhost:8080}"
       Notifications__DeskEmail: "${DESK_EMAIL:-}"
+      # Webhooks. The demo receiver runs inside this compose network, so private addresses and http:// are allowed
+      # here; set both to false when receivers are on the internet.
+      Webhooks__AllowHttp: "${WEBHOOKS_ALLOW_HTTP:-true}"
+      Webhooks__AllowPrivateNetworks: "${WEBHOOKS_ALLOW_PRIVATE:-true}"
       Reminders__Enabled: "${REMINDERS_ENABLED:-true}"
       Reminders__DigestHour: "${REMINDERS_DIGEST_HOUR:-8}"
       Reminders__DueSoonDays: "${REMINDERS_DUE_SOON_DAYS:-3}"
@@ -43,6 +47,20 @@ services:
     depends_on:
       - sqlserver
       - smtp4dev
+    restart: unless-stopped
+
+  # Demo webhook receiver (the WebhookReceiver SDK sample): `docker compose --profile webhooks up`.
+  # In Administration → Webhooks add http://webhook-receiver:5090/hooks/smart-inbox, put its secret in
+  # WEBHOOK_SECRET (.env), then `docker compose --profile webhooks up -d webhook-receiver` and watch its logs.
+  webhook-receiver:
+    profiles: ["webhooks"]
+    build:
+      context: .
+      dockerfile: sdk/samples/WebhookReceiver/Dockerfile
+    environment:
+      SmartInbox__WebhookSecret: "${WEBHOOK_SECRET:-whsec_set_me_from_the_admin_page}"
+    ports:
+      - "5090:5090"
     restart: unless-stopped
 
   # Test mail server: catches every email, nothing is delivered. Inbox UI at http://localhost:5100

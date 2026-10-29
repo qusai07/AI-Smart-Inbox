@@ -36,6 +36,9 @@ public static class ClaimNames
 public static class AuthSetup
 {
     public const string EntraScheme = "Entra";
+    public const string CookieOrApiKeyScheme = "CookieOrApiKey";
+    /// <summary>Same as IdentityConstants.ApplicationScheme, but usable in attributes.</summary>
+    public const string CookieScheme = "Identity.Application";
 
     public static IServiceCollection AddSmartInboxAuth(this IServiceCollection services, IConfiguration config)
     {
@@ -65,6 +68,18 @@ public static class AuthSetup
         });
         // Role / department changes made by an admin reach active sessions within a minute.
         services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
+
+        // Every request is authenticated by the cookie, unless it carries an API key. Must come after
+        // AddIdentity, which sets the cookie as the default; sign-in still goes through Identity's own schemes.
+        services.AddAuthentication(o =>
+            {
+                o.DefaultAuthenticateScheme = CookieOrApiKeyScheme;
+                o.DefaultChallengeScheme = CookieOrApiKeyScheme;
+                o.DefaultForbidScheme = CookieOrApiKeyScheme;
+            })
+            .AddPolicyScheme(CookieOrApiKeyScheme, "Cookie or API key", o => o.ForwardDefaultSelector = ctx =>
+                ApiKeyAuthenticationHandler.HasKey(ctx.Request) ? ApiKeyAuthenticationHandler.Scheme : IdentityConstants.ApplicationScheme)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.Scheme, null);
 
         var entra = config.GetSection("Auth:Entra").Get<EntraOptions>() ?? new EntraOptions();
         services.Configure<EntraOptions>(config.GetSection("Auth:Entra"));

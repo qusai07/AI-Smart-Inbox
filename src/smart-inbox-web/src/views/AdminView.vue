@@ -9,10 +9,11 @@ import Password from 'primevue/password'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
-import { api, type Role, type UserRow } from '../api'
-import { formatDateTime } from '../components/Badges'
+import { api, type ApiKeyRow, type Role, type UserRow } from '../api'
+import { formatDateTime, toDate } from '../components/Badges'
 import { useAuth } from '../stores/auth'
 import { useDepartmentName, useDepartments } from '../stores/departments'
+import WebhooksPanel from '../components/WebhooksPanel.vue'
 
 defineEmits<{ upload: [] }>()
 
@@ -107,8 +108,76 @@ async function saveEmail(id: number) {
   }
 }
 
+// ── API keys ──────────────────────────────────────────────────────
+const keys = ref<ApiKeyRow[]>([])
+const keyDialog = ref(false)
+const keyForm = reactive({ name: '', role: 'Clerk' as Role, departmentId: null as number | null, expiresOn: '' })
+const keyError = ref<string | null>(null)
+const newSecret = ref<string | null>(null)
+const copied = ref(false)
+const revoking = ref<ApiKeyRow | null>(null)
+
+const keyState = (k: ApiKeyRow) =>
+  k.revokedAt ? 'revoked' : k.expiresAt && toDate(k.expiresAt) <= new Date() ? 'expired' : 'active'
+
+async function loadKeys() {
+  try {
+    keys.value = await api.apiKeys()
+  } catch (e) {
+    error.value = (e as Error).message
+  }
+}
+
+function openCreateKey() {
+  Object.assign(keyForm, { name: '', role: 'Clerk', departmentId: null, expiresOn: '' })
+  keyError.value = null
+  keyDialog.value = true
+}
+
+async function createKey() {
+  busy.value = true
+  keyError.value = null
+  try {
+    const created = await api.createApiKey({
+      name: keyForm.name,
+      role: keyForm.role,
+      departmentId: keyForm.role === 'Department' ? keyForm.departmentId : null,
+      // The key works through the whole chosen day.
+      expiresAt: keyForm.expiresOn ? `${keyForm.expiresOn}T23:59:59Z` : null,
+    })
+    keyDialog.value = false
+    copied.value = false
+    newSecret.value = created.secret
+    await loadKeys()
+  } catch (e) {
+    keyError.value = (e as Error).message
+  } finally {
+    busy.value = false
+  }
+}
+
+async function copySecret() {
+  if (!newSecret.value) return
+  await navigator.clipboard.writeText(newSecret.value)
+  copied.value = true
+}
+
+async function revokeKey() {
+  if (!revoking.value) return
+  busy.value = true
+  try {
+    await api.revokeApiKey(revoking.value.id)
+    revoking.value = null
+    await loadKeys()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('errors.generic'), detail: (e as Error).message, life: 5000 })
+  } finally {
+    busy.value = false
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([load(), departments.load()])
+  await Promise.all([load(), loadKeys(), departments.load()])
   for (const d of departments.items) {
     emails[d.id] = d.email ?? ''
     heads[d.id] = d.headEmail ?? ''
@@ -185,6 +254,100 @@ onMounted(async () => {
       </div>
     </div>
   </section>
+
+  <section class="card block">
+    <div class="block-head">
+      <div>
+        <h2>{{ t('admin.apiKeys') }}</h2>
+        <p class="small muted hint">{{ t('admin.apiKeysHint') }}</p>
+      </div>
+      <Button :label="t('admin.newKey')" icon="pi pi-key" size="small" @click="openCreateKey" />
+    </div>
+    <p v-if="!keys.length" class="muted empty">{{ t('admin.noKeys') }}</p>
+    <div v-else class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{{ t('admin.keyName') }}</th>
+            <th>{{ t('admin.role') }}</th>
+            <th>{{ t('admin.created') }}</th>
+            <th>{{ t('admin.lastUsed') }}</th>
+            <th>{{ t('admin.expires') }}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="k in keys" :key="k.id" :class="{ disabled: keyState(k) !== 'active' }">
+            <td>
+              <strong>{{ k.name }}</strong>
+              <div class="faint ltr small"><code>{{ k.prefix }}_…</code></div>
+            </td>
+            <td>
+              <span class="pill neutral">{{ t(`auth.roles.${k.role}`) }}</span>
+              <div v-if="k.role === 'Department'" class="small muted">{{ departmentName(k.departmentId) }}</div>
+              <div v-if="keyState(k) !== 'active'" class="small" style="color: var(--urgent)">{{ t(`admin.${keyState(k)}`) }}</div>
+            </td>
+            <td class="small muted">
+              {{ formatDateTime(k.createdAt, locale) }}
+              <div v-if="k.createdBy">{{ k.createdBy }}</div>
+            </td>
+            <td class="small muted">{{ k.lastUsedAt ? formatDateTime(k.lastUsedAt, locale) : t('admin.never') }}</td>
+            <td class="small muted">{{ k.expiresAt ? formatDateTime(k.expiresAt, locale) : t('admin.noExpiry') }}</td>
+            <td class="end">
+              <Button v-if="!k.revokedAt" :label="t('admin.revoke')" icon="pi pi-ban" size="small" text severity="danger" @click="revoking = k" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <WebhooksPanel />
+
+  <Dialog v-model:visible="keyDialog" modal :header="t('admin.newKey')" :style="{ width: 'min(480px, 94vw)' }" :draggable="false">
+    <form class="form" @submit.prevent="createKey">
+      <label>
+        <span>{{ t('admin.keyName') }}</span>
+        <InputText v-model="keyForm.name" required fluid dir="auto" maxlength="100" :placeholder="t('admin.keyNamePlaceholder')" />
+      </label>
+      <label>
+        <span>{{ t('admin.role') }}</span>
+        <Select v-model="keyForm.role" :options="roleOptions" option-label="label" option-value="value" fluid />
+      </label>
+      <label v-if="keyForm.role === 'Department'">
+        <span>{{ t('admin.department') }}</span>
+        <Select v-model="keyForm.departmentId" :options="departmentOptions" option-label="label" option-value="value" fluid />
+      </label>
+      <label>
+        <span>{{ t('admin.expires') }} <small class="faint">· {{ t('admin.expiresHint') }}</small></span>
+        <InputText v-model="keyForm.expiresOn" type="date" fluid dir="ltr" />
+      </label>
+      <Message v-if="keyError" severity="error">{{ keyError }}</Message>
+    </form>
+    <template #footer>
+      <Button :label="t('actions.cancel')" severity="secondary" text @click="keyDialog = false" />
+      <Button :label="t('admin.create')" icon="pi pi-check" :loading="busy" :disabled="!keyForm.name.trim()" @click="createKey" />
+    </template>
+  </Dialog>
+
+  <Dialog :visible="!!newSecret" modal :closable="false" :header="t('admin.keyCreated')" :style="{ width: 'min(560px, 94vw)' }" :draggable="false">
+    <Message severity="warn" :closable="false">{{ t('admin.keyCreatedHint') }}</Message>
+    <div class="secret">
+      <code class="ltr">{{ newSecret }}</code>
+      <Button :label="copied ? t('admin.copied') : t('admin.copy')" :icon="copied ? 'pi pi-check' : 'pi pi-copy'" size="small" outlined @click="copySecret" />
+    </div>
+    <template #footer>
+      <Button :label="t('admin.done')" @click="newSecret = null" />
+    </template>
+  </Dialog>
+
+  <Dialog :visible="!!revoking" modal :header="t('admin.revokeTitle')" :style="{ width: 'min(440px, 94vw)' }" :draggable="false" @update:visible="(v: boolean) => { if (!v) revoking = null }">
+    <p>{{ t('admin.revokeText', { name: revoking?.name }) }}</p>
+    <template #footer>
+      <Button :label="t('actions.cancel')" severity="secondary" text @click="revoking = null" />
+      <Button :label="t('admin.revoke')" icon="pi pi-ban" severity="danger" :loading="busy" @click="revokeKey" />
+    </template>
+  </Dialog>
 
   <Dialog v-model:visible="dialog" modal :header="editing ? editing.displayName : t('admin.add')" :style="{ width: 'min(480px, 94vw)' }" :draggable="false">
     <form class="form" @submit.prevent="save">
@@ -338,6 +501,29 @@ onMounted(async () => {
 .form label.switch {
   flex-direction: row;
   align-items: center;
+}
+.hint {
+  margin: 2px 0 0;
+}
+.empty {
+  padding: 16px 20px;
+  margin: 0;
+}
+.secret {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.secret code {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+  font-size: 0.85rem;
 }
 :deep(.ltr-input) {
   direction: ltr;

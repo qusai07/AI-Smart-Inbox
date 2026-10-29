@@ -66,7 +66,10 @@ static async Task MigrateAsync(WebApplication app)
         try
         {
             using var scope = app.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<SmartInboxDbContext>().Database.MigrateAsync();
+            var database = scope.ServiceProvider.GetRequiredService<SmartInboxDbContext>().Database;
+            // Integration tests swap in the in-memory provider, which has no migrations.
+            if (database.IsRelational()) await database.MigrateAsync();
+            else await database.EnsureCreatedAsync();
             return;
         }
         catch (Exception ex) when (attempt < 10)
@@ -76,3 +79,6 @@ static async Task MigrateAsync(WebApplication app)
         }
     }
 }
+
+/// <summary>Visible to WebApplicationFactory in the integration tests.</summary>
+public partial class Program;

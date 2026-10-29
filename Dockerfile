@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=api /app .
 COPY --from=web /web/dist ./wwwroot
 ENV ASPNETCORE_URLS=http://+:8080 \
-    Storage__Root=/data/uploads
+    Storage__Root=/data/uploads     DataProtection__KeysPath=/data/keys
 VOLUME /data
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "SmartInbox.Api.dll"]

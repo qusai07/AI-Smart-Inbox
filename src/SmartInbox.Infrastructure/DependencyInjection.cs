@@ -13,6 +13,8 @@ using SmartInbox.Infrastructure.Persistence;
 using SmartInbox.Infrastructure.Processing;
 using SmartInbox.Infrastructure.Storage;
 using SmartInbox.Infrastructure.TextExtraction;
+using SmartInbox.Infrastructure.Webhooks;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace SmartInbox.Infrastructure;
 
@@ -45,6 +47,24 @@ public static class DependencyInjection
 
         services.AddSingleton(config.GetSection("Reminders").Get<ReminderOptions>() ?? new ReminderOptions());
         services.AddHostedService<ReminderWorker>();
+
+        // Webhook signing secrets are encrypted with Data Protection; the keys must survive restarts (Docker: the /data volume).
+        services.AddDataProtection()
+            .SetApplicationName("SmartInbox")
+            .PersistKeysToFileSystem(new DirectoryInfo(config["DataProtection:KeysPath"] ?? "App_Data/keys"));
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+        var webhooks = config.GetSection("Webhooks").Get<WebhookOptions>() ?? new WebhookOptions();
+        services.AddSingleton(webhooks);
+        services.AddHttpClient(HttpWebhookTransport.ClientName, c => c.Timeout = HttpWebhookTransport.Timeout)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseProxy = false, // a proxy would make the connect-time address check meaningless
+                UseCookies = false,
+                ConnectCallback = SsrfGuard.ConnectCallback(webhooks.AllowPrivateNetworks),
+            });
+        services.AddSingleton<IWebhookTransport, HttpWebhookTransport>();
+        services.AddHostedService<WebhookWorker>();
         return services;
     }
 

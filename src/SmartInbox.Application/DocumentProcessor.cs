@@ -11,8 +11,11 @@ public class DocumentProcessor(
     IEnumerable<ITextExtractor> extractors,
     IAiProvider ai,
     IInboxNotifier notifier,
-    ILogger<DocumentProcessor> logger)
+    ILogger<DocumentProcessor> logger,
+    IWebhookPublisher? webhooks = null)
 {
+    private readonly IWebhookPublisher _webhooks = webhooks ?? NullWebhookPublisher.Instance;
+
     /// <summary>Below this confidence the document goes to the Needs Review queue.</summary>
     public const double ConfidenceThreshold = 0.6;
 
@@ -44,7 +47,7 @@ public class DocumentProcessor(
             });
             // Re-analyzing a routed document refreshes the analysis but must not undo the human decision.
             var routed = await db.RoutingDecisions.AnyAsync(r => r.DocumentId == doc.Id, ct);
-            await SetStatusAsync(doc, routed ? DocumentStatus.Routed : StatusFor(doc.Analysis!), ct);
+            await SetStatusAsync(doc, routed ? DocumentStatus.Routed : StatusFor(doc.Analysis!), ct, WebhookEvents.DocumentAnalyzed, result.ModelUsed);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -56,7 +59,7 @@ public class DocumentProcessor(
             doc.ErrorMessage = ex is AiException ? ex.Message : "AI analysis failed. Try re-analyzing.";
             db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.AnalysisFailed, Actor = "system", Note = doc.ErrorMessage });
             var routed = await db.RoutingDecisions.AnyAsync(r => r.DocumentId == doc.Id, ct);
-            await SetStatusAsync(doc, routed ? DocumentStatus.Routed : DocumentStatus.Failed, ct);
+            await SetStatusAsync(doc, routed ? DocumentStatus.Routed : DocumentStatus.Failed, ct, WebhookEvents.DocumentAnalysisFailed, "system");
         }
     }
 
@@ -118,9 +121,10 @@ public class DocumentProcessor(
             .ToList();
     }
 
-    private async Task SetStatusAsync(Document doc, DocumentStatus status, CancellationToken ct)
+    private async Task SetStatusAsync(Document doc, DocumentStatus status, CancellationToken ct, string? webhookEvent = null, string? actor = null)
     {
         doc.Status = status;
+        if (webhookEvent is not null) await _webhooks.PublishDocumentAsync(webhookEvent, doc, actor, ct);
         await db.SaveChangesAsync(ct);
         await notifier.DocumentStatusChangedAsync(doc.Id, status, Audience.Of(doc.AssignedDepartmentId), ct);
     }

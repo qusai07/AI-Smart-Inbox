@@ -23,5 +23,11 @@ public class UserDirectory(UserManager<AppUser> users) : IUserDirectory
             .ToList();
     }
 
+    public async Task<IReadOnlyList<string>> AdminEmailsAsync(CancellationToken ct = default) =>
+        (await users.GetUsersInRoleAsync(Roles.Admin))
+            .Where(u => !IsDisabled(u) && !string.IsNullOrWhiteSpace(u.Email))
+            .Select(u => u.Email!)
+            .ToList();
+
     private static bool IsDisabled(AppUser u) => u.LockoutEnd > DateTimeOffset.UtcNow.AddYears(50);
 }

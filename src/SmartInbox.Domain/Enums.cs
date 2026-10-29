@@ -55,6 +55,13 @@ public enum NotificationStatus
     Failed
 }
 
+public enum WebhookDeliveryStatus
+{
+    Pending,
+    Delivered,
+    Failed
+}
+
 public enum Priority
 {
     Low,

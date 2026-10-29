@@ -21,6 +21,7 @@ It runs **free by default**: a built-in rule engine and an optional local LLM (O
 - [Email notifications](#email-notifications)
 - [Configuration](#configuration)
 - [AI evals](#ai-evals)
+- [Integrations: API keys, webhooks, SDK](#integrations-api-keys-webhooks-sdk)
 - [API](#api)
 - [Roadmap](#roadmap)
 
@@ -242,6 +243,9 @@ With Claude or Ollama:
 | `Auth:AdminEmail` / `Auth:AdminPassword` | – | First admin in production |
 | `Auth:Entra:TenantId` / `ClientId` / `ClientSecret` | – | Microsoft sign-in |
 | `Storage:Root` | `App_Data/uploads` | Uploaded files |
+| `Webhooks:Enabled` / `DeadlineWarningDays` | `true` / `2` | Webhook delivery · when `deadline.approaching` fires |
+| `Webhooks:AllowHttp` / `AllowPrivateNetworks` | `false` / `false` (`true` in Development and Docker demo) | Allow `http://` and internal receivers |
+| `DataProtection:KeysPath` | `App_Data/keys` | Keys that encrypt webhook secrets; keep them across restarts |
 
 ## AI evals
 
@@ -256,9 +260,36 @@ With Claude or Ollama:
 
 The rule engine's vocabulary was written alongside these samples, so these numbers show fit, not real-world accuracy; a held-out set is on the roadmap. Details: [docs/EVALS.md](docs/EVALS.md).
 
+## Integrations: API keys, webhooks, SDK
+
+Other systems can work with Smart Inbox without a browser:
+
+```mermaid
+flowchart LR
+    ERP[External system<br/>SmartInbox.Client SDK] -- "Bearer sik_…<br/>(acts as a role)" --> API[Smart Inbox API]
+    API --> SVC[Document service<br/>route · close · analyze]
+    SVC -- "same transaction<br/>(outbox)" --> OUT[(Webhook deliveries)]
+    OUT --> W[Webhook worker<br/>sign · retry · SSRF guard]
+    W -- "POST + SmartInbox-Signature" --> RCV[Receiver<br/>MapSmartInboxWebhooks]
+```
+
+- **API keys** (*Administration → API keys*): `Authorization: Bearer sik_…`. A key has a role (Admin, Clerk or Department, plus a department), so it gets exactly the same permissions as a person with that role. The key is shown once; only its SHA-256 hash is stored. Actions appear on the timeline as `API key: <name>`.
+- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened` and `deadline.approaching`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
+- **.NET SDK** ([`sdk/dotnet`](sdk/dotnet)): `SmartInbox.Client` (typed client, paging, typed errors, safe retries, `WebhookVerifier`) and `SmartInbox.Client.AspNetCore` (`MapSmartInboxWebhooks`). Samples in [`sdk/samples`](sdk/samples).
+
+```csharp
+builder.Services.AddSmartInboxClient(o => { o.BaseUrl = new("https://inbox.example.com"); o.ApiKey = key; });
+
+var doc = await inbox.Documents.UploadAsync(File.OpenRead("letter.pdf"), "letter.pdf");
+var detail = await inbox.Documents.WaitForAnalysisAsync(doc.Id, TimeSpan.FromMinutes(2));
+await inbox.Documents.RouteAsync(doc.Id, detail.Analysis!.SuggestedDepartmentId!.Value, note: "Auto-routed");
+```
+
+Try it with Docker: `docker compose --profile webhooks up`, add a webhook endpoint for `http://webhook-receiver:5090/hooks/smart-inbox`, set its secret as `WEBHOOK_SECRET` in `.env`, restart the receiver, and route a document. `docker compose logs -f webhook-receiver` prints the event.
+
 ## API
 
-All endpoints except sign-in require a session cookie.
+All endpoints except sign-in require a session cookie or an API key (`Authorization: Bearer sik_…`). Managing API keys and webhooks needs a signed-in admin (cookie), so a leaked key can't create more keys.
 
 | Method | Route | Who | |
 |---|---|---|---|
@@ -277,6 +308,10 @@ All endpoints except sign-in require a session cookie.
 | `PUT` | `/api/departments/{id}/contacts` | Admin | `{ email, headEmail }` for notifications, digests and escalations |
 | `GET` | `/api/stats` | Desk | Dashboard numbers |
 | `GET` `POST` `PUT` | `/api/users` · `/api/users/{id}` · `/{id}/password` | Admin | User administration |
+| `GET` `POST` `DELETE` | `/api/api-keys` · `/api/api-keys/{id}` | Admin (cookie) | List · create (key shown once) · revoke |
+| `GET` `POST` `PUT` `DELETE` | `/api/webhooks` · `/api/webhooks/{id}` · `/events` | Admin (cookie) | Endpoints and the event catalog |
+| `POST` | `/api/webhooks/{id}/ping` · `/rotate-secret` | Admin (cookie) | Send a test event · new signing secret |
+| `GET` `POST` | `/api/webhooks/{id}/deliveries` · `/deliveries/{id}/redeliver` | Admin (cookie) | Delivery log · send an event again |
 | `HUB` | `/hubs/inbox` | Signed in | `DocumentStatusChanged { documentId, status }` |
 
 ## Roadmap
@@ -296,6 +331,8 @@ All endpoints except sign-in require a session cookie.
 - [ ] **Semantic search** over documents (embeddings).
 
 ### Integrations
+- [x] **API keys, signed webhooks and a .NET SDK** (`SmartInbox.Client`).
+- [ ] **MCP server** so Claude can operate the inbox through the SDK.
 - [ ] **Mailbox ingestion.** Pull incoming correspondence from a shared mailbox (IMAP or Microsoft Graph), including attachments.
 - [ ] **Microsoft Teams notifications** as an alternative to email.
 - [ ] **Entra app roles / groups** mapped to Admin, Clerk and Department automatically.

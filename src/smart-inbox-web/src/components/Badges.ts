@@ -27,7 +27,7 @@ export function timeAgo(value: string, locale: string) {
   return ''
 }
 
-function toDate(value: string) {
+export function toDate(value: string) {
   // Date-only values (YYYY-MM-DD) must not shift across time zones; server timestamps are UTC.
   if (value.length === 10) return new Date(`${value}T00:00:00`)
   return new Date(/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`)
