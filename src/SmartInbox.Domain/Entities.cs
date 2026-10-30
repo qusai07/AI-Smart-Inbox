@@ -16,6 +16,12 @@ public class Document
     /// <summary>The email it came in, when Source is Email.</summary>
     public Guid? InboundEmailId { get; set; }
 
+    // Keys for finding related letters (see RelatedLetterFinder): SHA-256 of the file and of the normalised text,
+    // and the normalised reference number from the analysis.
+    public string? ContentHash { get; set; }
+    public string? TextHash { get; set; }
+    public string? ReferenceKey { get; set; }
+
     // Department side, set once the document is routed.
     public int? AssignedDepartmentId { get; set; }
     public Department? AssignedDepartment { get; set; }
@@ -61,6 +67,10 @@ public class InboundEmail
     public string? DocumentIds { get; set; }
     /// <summary>JSON array of attachments that were not imported, with the reason.</summary>
     public string? SkippedAttachments { get; set; }
+
+    /// <summary>The Message-Id this email answers, and the conversation's earlier ids (space-separated).</summary>
+    public string? InReplyTo { get; set; }
+    public string? References { get; set; }
 }
 
 /// <summary>Internal discussion on a document. Immutable, so it doubles as an audit trail.</summary>
@@ -157,6 +167,24 @@ public class Notification
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime NextAttemptAt { get; set; } = DateTime.UtcNow;
     public DateTime? SentAt { get; set; }
+}
+
+/// <summary>
+/// Two letters that belong together, with the reason. Points from the newer letter to the earlier one; when the earlier
+/// side is only one of our outgoing letters (registered by hand), <see cref="RelatedDocumentId"/> is null.
+/// A removed link stays (with who removed it) so it isn't found again.
+/// </summary>
+public class DocumentLink
+{
+    public long Id { get; set; }
+    public Guid DocumentId { get; set; }
+    public Guid? RelatedDocumentId { get; set; }
+    public LinkKind Kind { get; set; }
+    public string? Evidence { get; set; }
+    public Guid? OutgoingLetterId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? RemovedAt { get; set; }
+    public string? RemovedBy { get; set; }
 }
 
 /// <summary>

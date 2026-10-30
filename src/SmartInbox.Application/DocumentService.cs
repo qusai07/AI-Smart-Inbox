@@ -36,9 +36,21 @@ public class DocumentService(
         Stream content, string fileName, string contentType, string? uploadedBy, CancellationToken ct,
         DocumentSource? source = null, Guid? inboundEmailId = null, string? note = null)
     {
+        if (!content.CanSeek)
+        {
+            var copy = new MemoryStream();
+            await content.CopyToAsync(copy, ct);
+            copy.Position = 0;
+            content = copy;
+        }
+        var start = content.Position;
+        var contentHash = await LetterKeys.HashAsync(content, ct);
+        content.Position = start;
+
         var path = await storage.SaveAsync(content, fileName, ct);
         var doc = new Document
         {
+            ContentHash = contentHash,
             FileName = Path.GetFileName(fileName),
             ContentType = contentType,
             StoragePath = path,

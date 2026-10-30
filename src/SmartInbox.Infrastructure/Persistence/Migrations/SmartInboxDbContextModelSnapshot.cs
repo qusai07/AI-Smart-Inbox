@@ -404,6 +404,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -439,6 +443,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("InboundEmailId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ReferenceKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -456,6 +464,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("TextHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
@@ -467,11 +479,17 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AssigneeId");
 
+                    b.HasIndex("ContentHash");
+
                     b.HasIndex("InboundEmailId");
+
+                    b.HasIndex("ReferenceKey");
 
                     b.HasIndex("Source");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("TextHash");
 
                     b.HasIndex("AssignedDepartmentId", "Handling");
 
@@ -625,6 +643,55 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.ToTable("DocumentEvents");
                 });
 
+            modelBuilder.Entity("SmartInbox.Domain.DocumentLink", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Evidence")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("OutgoingLetterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("RelatedDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RemovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RemovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutgoingLetterId");
+
+                    b.HasIndex("RelatedDocumentId");
+
+                    b.HasIndex("DocumentId", "RelatedDocumentId")
+                        .IsUnique()
+                        .HasFilter("[RelatedDocumentId] IS NOT NULL");
+
+                    b.ToTable("DocumentLinks");
+                });
+
             modelBuilder.Entity("SmartInbox.Domain.InboundEmail", b =>
                 {
                     b.Property<Guid>("Id")
@@ -650,6 +717,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("InReplyTo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Mailbox")
                         .IsRequired()
                         .HasMaxLength(320)
@@ -666,6 +737,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("References")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<DateTime?>("SentAt")
                         .HasColumnType("datetime2");
@@ -1334,6 +1409,25 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.DocumentLink", b =>
+                {
+                    b.HasOne("SmartInbox.Domain.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartInbox.Domain.OutgoingLetter", null)
+                        .WithMany()
+                        .HasForeignKey("OutgoingLetterId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("SmartInbox.Domain.Document", null)
+                        .WithMany()
+                        .HasForeignKey("RelatedDocumentId")
+                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.Notification", b =>

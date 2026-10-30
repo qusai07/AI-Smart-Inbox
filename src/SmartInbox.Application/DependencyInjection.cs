@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<ReplyDraftService>();
         services.AddScoped<MailboxImporter>();
         services.AddScoped<RegisterService>();
+        services.AddScoped<RelatedLetterFinder>();
         services.AddScoped<IValidator<RegisterQuery>, RegisterQueryValidator>();
         services.AddScoped<IValidator<IssueRequest>, IssueRequestValidator>();
         services.AddScoped<IValidator<MarkSentRequest>, MarkSentRequestValidator>();

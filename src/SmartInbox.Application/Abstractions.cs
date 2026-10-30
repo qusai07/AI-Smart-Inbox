@@ -20,6 +20,7 @@ public interface IAppDbContext
     DbSet<InboundEmail> InboundEmails { get; }
     DbSet<OutgoingLetter> OutgoingLetters { get; }
     DbSet<RegisterCounter> RegisterCounters { get; }
+    DbSet<DocumentLink> DocumentLinks { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

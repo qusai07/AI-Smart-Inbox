@@ -38,7 +38,21 @@ public enum DocumentEventType
     DraftEdited,
     DraftApproved,
     DraftRejected,
-    OutgoingIssued
+    OutgoingIssued,
+    Linked
+}
+
+/// <summary>Why two letters are related, strongest first.</summary>
+public enum LinkKind
+{
+    /// <summary>The same letter received twice (same file or same text).</summary>
+    Duplicate,
+    /// <summary>It quotes one of our outgoing numbers.</summary>
+    RepliesToOurLetter,
+    /// <summary>The next email in the same conversation (In-Reply-To / References).</summary>
+    EmailThread,
+    /// <summary>Same reference number from the same sender.</summary>
+    FollowUp
 }
 
 public enum OutgoingStatus

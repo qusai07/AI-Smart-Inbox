@@ -120,7 +120,8 @@ public sealed class ImapMailboxClient(MailboxOptions options) : IMailboxClient, 
             uid, messageId, from?.Name, from?.Address, message.Subject,
             message.Date == DateTimeOffset.MinValue ? null : message.Date,
             message.TextBody ?? HtmlToText(message.HtmlBody),
-            IsAutoReply(message), attachments, bytes);
+            IsAutoReply(message), attachments, bytes,
+            Normalize(message.InReplyTo), message.References.Select(Normalize).OfType<string>().ToList());
     }
 
     /// <summary>Out-of-office replies, bounces and other machine-generated mail (RFC 3834 and common conventions).</summary>
