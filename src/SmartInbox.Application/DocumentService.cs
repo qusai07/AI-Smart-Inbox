@@ -42,7 +42,8 @@ public class DocumentService(
             FileName = Path.GetFileName(fileName),
             ContentType = contentType,
             StoragePath = path,
-            UploadedBy = _user.Name ?? uploadedBy,
+            // Mail is credited to the mailbox, even when an admin pressed "Check now".
+            UploadedBy = source == DocumentSource.Email ? uploadedBy : _user.Name ?? uploadedBy,
             Status = DocumentStatus.Processing,
             Source = source ?? (_user.Id?.StartsWith("apikey:", StringComparison.Ordinal) == true ? DocumentSource.Api : DocumentSource.Upload),
             InboundEmailId = inboundEmailId,
@@ -71,6 +72,7 @@ public class DocumentService(
             query = query.Where(d => (d.AssignedDepartmentId ?? d.Analysis!.SuggestedDepartmentId) == dep);
         if (q.Assigned is { } assigned) query = query.Where(d => d.AssignedDepartmentId == assigned);
         if (q.Handling is { } handling) query = query.Where(d => d.Handling == handling);
+        if (q.Source is { } source) query = query.Where(d => d.Source == source);
         if (q.Mine) query = _user.Id is { } me ? query.Where(d => d.AssigneeId == me) : query.Where(d => false);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
@@ -106,7 +108,8 @@ public class DocumentService(
                 d.Analysis != null ? d.Analysis.Confidence : null,
                 d.Handling,
                 d.AssigneeId,
-                d.AssigneeName))
+                d.AssigneeName,
+                d.Source))
             .ToListAsync(ct);
 
         return new PagedResult<DocumentListItemDto>(items, total, page, size);
@@ -126,6 +129,7 @@ public class DocumentService(
 
         var a = d.Analysis;
         var r = d.RoutingDecisions.OrderByDescending(x => x.DecidedAt).FirstOrDefault();
+        var email = d.InboundEmailId is { } emailId ? await db.InboundEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == emailId, ct) : null;
         return new DocumentDetailDto(
             d.Id, d.FileName, d.ContentType, d.Status, d.UploadedAt, d.ExtractedText, d.ErrorMessage,
             a is null ? null : new AnalysisDto(
@@ -140,13 +144,25 @@ public class DocumentService(
             d.Events.OrderBy(e => e.At).ThenBy(e => e.Id)
                 .Select(e => new DocumentEventDto(e.Type, e.Actor, e.DepartmentId, e.Note, e.At)).ToList(),
             d.AssigneeId is null ? null : new AssigneeDto(d.AssigneeId, d.AssigneeName ?? ""),
-            d.Comments.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).Select(CommentDto.From).ToList());
+            d.Comments.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).Select(CommentDto.From).ToList(),
+            d.Source,
+            email is null ? null : new SourceEmailDto(email.Id, email.FromName, email.FromAddress, email.Subject, email.SentAt, email.BodyText,
+                ReplyDraftRules.FromJson(email.SkippedAttachments)));
     }
 
     public async Task<(Stream Content, string ContentType, string FileName)?> OpenFileAsync(Guid id, CancellationToken ct)
     {
         var d = await Visible(db.Documents.AsNoTracking()).FirstOrDefaultAsync(x => x.Id == id, ct);
         return d is null ? null : (storage.Open(d.StoragePath), d.ContentType, d.FileName);
+    }
+
+    /// <summary>The original email a document came in, for whoever can see the document. Null otherwise.</summary>
+    public async Task<(Stream Content, string FileName)?> OpenSourceEmailAsync(Guid id, CancellationToken ct)
+    {
+        var emailId = await Visible(db.Documents.AsNoTracking()).Where(x => x.Id == id).Select(x => x.InboundEmailId).FirstOrDefaultAsync(ct);
+        if (emailId is null) return null;
+        var email = await db.InboundEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == emailId, ct);
+        return email?.StoragePath is { } path ? (storage.Open(path), "original-email.eml") : null;
     }
 
     public enum ReanalyzeOutcome { Accepted, NotFound, Busy }

@@ -99,7 +99,7 @@ Document (+)
 | `Mailbox:AllowedSenders` | – (anyone) | Optional list of addresses or `@domain.gov` |
 | `Mailbox:MaxAttempts` | `5` | After that the email is `Failed` and shown to admins |
 
-Docker demo: the bundled **smtp4dev** test mail server also speaks IMAP, so `docker compose up` can show the whole flow: send an email → it appears in Smart Inbox (to verify on Day 1; fallback: GreenMail test container).
+Docker demo: `docker compose --profile mailbox up` adds a **GreenMail** test mail server (free, accepts any login): send an email to `correspondence@mds.demo` via SMTP `localhost:3025` → it appears in Smart Inbox. (smtp4dev's current release couldn't be checked: its .NET tool doesn't install on the .NET 8 SDK, so GreenMail is used for both the demo and CI.)
 
 ---
 
@@ -156,7 +156,7 @@ Docker demo: the bundled **smtp4dev** test mail server also speaks IMAP, so `doc
 | Day | Task | Done |
 |---|---|---|
 | 1 | `InboundEmail` + `Document.Source` + migration; `IMailboxClient`; `MailboxImporter` with the rules in §2 and §5; unit tests with a fake mailbox; check smtp4dev IMAP (moved to Day 2: Docker wasn't running) | ☑ |
-| 2 | `ImapMailboxClient` (MailKit), `MailboxWorker`, move/flag, retries; admin API (status, test, check, imports, retry); Docker demo wiring; integration test against the test mail server | ☐ |
+| 2 | `ImapMailboxClient` (MailKit), `MailboxWorker`, move/flag, retries; admin API (status, test, check, imports, retry); Docker demo wiring (GreenMail); integration test against the test mail server (runs in CI; not yet run locally) | ☑ |
 | 3 | Web UI: Administration → Mailbox, "Received by email" box + original download, inbox icon/filter, Integrations card, What's new item | ☐ |
 | 4 | Webhook/SDK/MCP `source`; end-to-end eval with the 20 samples by email; `docs/MAILBOX.md`; README | ☐ |
 

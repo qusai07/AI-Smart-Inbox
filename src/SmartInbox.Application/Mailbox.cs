@@ -262,3 +262,52 @@ public class MailboxImporter(
 
     private static string? Limit(string? s, int max) => s is null || s.Length <= max ? s : s[..max];
 }
+
+public record MailboxStatus(
+    bool Enabled, bool Configured, string Address, string? Host, string Folder, string? ProcessedFolder, int PollSeconds,
+    bool Running, DateTime? LastCheckAt, DateTime? NextCheckAt, MailboxRunResult? LastResult, string? LastError);
+
+/// <summary>Runs one check at a time (the worker's schedule and "Check now" share it) and remembers how it went.</summary>
+public interface IMailboxRunner
+{
+    MailboxStatus Status { get; }
+    Task<MailboxRunResult> CheckNowAsync(CancellationToken ct);
+    Task<MailboxTestResult> TestAsync(CancellationToken ct);
+}
+
+public record InboundEmailDto(
+    Guid Id, string MessageId, string? FromName, string? FromAddress, string? Subject, DateTime? SentAt, DateTime ReceivedAt,
+    InboundEmailStatus Status, string? Reason, int Attempts, IReadOnlyList<Guid> DocumentIds, IReadOnlyList<string> SkippedAttachments)
+{
+    public static InboundEmailDto From(InboundEmail e) => new(
+        e.Id, e.MessageId, e.FromName, e.FromAddress, e.Subject, e.SentAt, e.ReceivedAt, e.Status, e.Reason, e.Attempts,
+        string.IsNullOrEmpty(e.DocumentIds) ? [] : JsonSerializer.Deserialize<List<Guid>>(e.DocumentIds) ?? [],
+        ReplyDraftRules.FromJson(e.SkippedAttachments));
+}
+
+/// <summary>The import log for admins, and putting a failed email back in line.</summary>
+public class MailboxAdminService(IAppDbContext db)
+{
+    public const int PageSize = 25;
+
+    public async Task<PagedResult<InboundEmailDto>> ImportsAsync(int page, InboundEmailStatus? status, CancellationToken ct)
+    {
+        var query = db.InboundEmails.AsNoTracking();
+        if (status is { } s) query = query.Where(e => e.Status == s);
+        page = Math.Max(1, page);
+        var total = await query.CountAsync(ct);
+        var items = await query.OrderByDescending(e => e.ReceivedAt).Skip((page - 1) * PageSize).Take(PageSize).ToListAsync(ct);
+        return new PagedResult<InboundEmailDto>(items.Select(InboundEmailDto.From).ToList(), total, page, PageSize);
+    }
+
+    /// <summary>A failed email gets a fresh set of attempts on the next check. False when it doesn't exist or didn't fail.</summary>
+    public async Task<bool> RetryAsync(Guid id, CancellationToken ct)
+    {
+        var email = await db.InboundEmails.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (email is not { Status: InboundEmailStatus.Failed }) return false;
+        email.Attempts = 0;
+        email.Reason = "Retry requested";
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+}

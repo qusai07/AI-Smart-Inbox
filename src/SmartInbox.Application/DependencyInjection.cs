@@ -15,6 +15,8 @@ public static class DependencyInjection
         services.AddScoped<ApiKeyService>();
         services.AddScoped<IValidator<CreateApiKeyRequest>, CreateApiKeyRequestValidator>();
         services.AddScoped<ReplyDraftService>();
+        services.AddScoped<MailboxImporter>();
+        services.AddScoped<MailboxAdminService>();
         services.AddSingleton(_ => new ReplyTemplateCatalog()); // explicit: DI would pick the IEnumerable constructor with an empty list
         services.AddScoped<IReplyDrafter, TemplateReplyDrafter>();
         services.AddScoped<ReplyDraftGenerator>();
