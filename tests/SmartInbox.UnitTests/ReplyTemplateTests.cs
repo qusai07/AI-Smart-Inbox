@@ -25,7 +25,7 @@ public class ReplyTemplateTests
     [Fact]
     public void Catalog_LoadsEveryShippedTemplate()
     {
-        Assert.Equal(9, Catalog.All.Count);
+        Assert.Equal(10, Catalog.All.Count);
         Assert.Equal(ReplyTemplateCatalog.Fallback, Catalog.List().Last().Key);
         Assert.All(Catalog.All, t =>
         {
@@ -85,12 +85,45 @@ public class ReplyTemplateTests
     {
         var d = await Draft(new DocumentAnalysis { Category = DocumentCategory.Legal });
 
-        Assert.Contains("Their reference number", d.MissingInfo);
-        Assert.Contains("Date of their letter", d.MissingInfo);
         Assert.Contains("Deadline", d.MissingInfo);
         Assert.Contains("Recipient (who the reply is addressed to)", d.MissingInfo);
-        Assert.Equal("Your notice ref. [●]", d.SubjectEn);
         Assert.Contains("before [●].", d.BodyEn);
+    }
+
+    [Fact]
+    public async Task LettersWithoutAReferenceOrDate_ReadNaturally_InsteadOfAGap()
+    {
+        var d = await Draft(new DocumentAnalysis { Category = DocumentCategory.Complaint, Sender = "Mr. Omar Siddiqui" });
+
+        Assert.Equal("Your complaint", d.SubjectEn);
+        Assert.Contains("We acknowledge receipt of your complaint and regret", d.BodyEn);
+        Assert.Contains("نفيدكم باستلام شكواكم، ونعتذر", d.BodyAr);
+        Assert.DoesNotContain("Their reference number", d.MissingInfo);
+        Assert.DoesNotContain("Their reference number and date", d.MissingInfo);
+    }
+
+    [Theory]
+    [InlineData("2027/118", null, "Acknowledgement of your letter ref. 2027/118", "your letter ref. 2027/118.", "خطابكم رقم 2027/118،")]
+    [InlineData(null, "2027-02-03", "Acknowledgement of your letter", "your letter dated 3 February 2027.", "خطابكم المؤرخ في 3 فبراير 2027،")]
+    [InlineData("A/1", "2027-02-03", "Acknowledgement of your letter ref. A/1", "your letter ref. A/1 dated 3 February 2027.", "خطابكم رقم A/1 المؤرخ في 3 فبراير 2027،")]
+    public async Task ReferenceAndDate_AreWordedFromWhatIsKnown(string? reference, string? date, string subject, string en, string ar)
+    {
+        var d = await Draft(new DocumentAnalysis
+        {
+            Category = DocumentCategory.Request, Sender = "X", ReferenceNumber = reference,
+            DocumentDate = date is null ? null : DateOnly.Parse(date),
+        });
+
+        Assert.Equal(subject, d.SubjectEn);
+        Assert.Contains(en, d.BodyEn);
+        Assert.Contains(ar, d.BodyAr);
+    }
+
+    [Fact]
+    public async Task FeminineNouns_GetTheFeminineForm()
+    {
+        var d = await Draft(Analysis(DocumentCategory.Invoice));
+        Assert.Contains("فاتورتكم رقم 2027/118 المؤرخة في 20 أكتوبر 2026", d.BodyAr);
     }
 
     [Fact]

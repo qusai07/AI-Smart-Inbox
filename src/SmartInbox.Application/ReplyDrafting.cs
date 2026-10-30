@@ -11,7 +11,7 @@ public record DraftResult(
     string TemplateKey, string Engine, string SubjectEn, string BodyEn, string SubjectAr, string BodyAr,
     IReadOnlyList<string> MissingInfo, IReadOnlyList<string> Commitments);
 
-/// <summary>A drafting engine: Templates (no AI), and later the local model (Ollama) for the reply paragraph.</summary>
+/// <summary>A drafting engine. Today: templates (no AI); the interface leaves room for others if measurement ever justifies one.</summary>
 public interface IReplyDrafter
 {
     Task<DraftResult> DraftAsync(DraftInput input, CancellationToken ct);
@@ -55,6 +55,8 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,
             ["TheirDate"] = a?.DocumentDate is { } date ? LetterDates.En(date) : null,
+            ["TheirRef"] = a?.ReferenceNumber is { Length: > 0 } r ? $"ref. {r}" : null,
+            ["TheirRefDate"] = Join(a?.ReferenceNumber is { Length: > 0 } r2 ? $"ref. {r2}" : null, a?.DocumentDate is { } d2 ? $"dated {LetterDates.En(d2)}" : null),
             ["Deadline"] = a?.Deadline is { } deadline ? LetterDates.En(deadline) : null,
             ["Department"] = d.NameEn,
             ["DepartmentTeam"] = d.NameEn.EndsWith("Office", StringComparison.OrdinalIgnoreCase) ? $"the {d.NameEn}" : $"the {d.NameEn} department",
@@ -70,6 +72,10 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,
             ["TheirDate"] = a?.DocumentDate is { } date2 ? LetterDates.Ar(date2) : null,
+            ["TheirRef"] = a?.ReferenceNumber is { Length: > 0 } r3 ? $"رقم {r3}" : null,
+            // Arabic agrees with the noun: خطابكم … المؤرخ (masculine), دعوتكم … المؤرخة (feminine).
+            ["TheirRefDateM"] = Join(a?.ReferenceNumber is { Length: > 0 } r4 ? $"رقم {r4}" : null, a?.DocumentDate is { } d4 ? $"المؤرخ في {LetterDates.Ar(d4)}" : null),
+            ["TheirRefDateF"] = Join(a?.ReferenceNumber is { Length: > 0 } r5 ? $"رقم {r5}" : null, a?.DocumentDate is { } d5 ? $"المؤرخة في {LetterDates.Ar(d5)}" : null),
             ["Deadline"] = a?.Deadline is { } deadline2 ? LetterDates.Ar(deadline2) : null,
             ["Department"] = d.NameAr,
             ["DepartmentTeam"] = d.NameAr.StartsWith("مكتب", StringComparison.Ordinal) ? d.NameAr : $"إدارة {d.NameAr}",
@@ -80,6 +86,8 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
         };
         return (en, ar);
     }
+
+    private static string? Join(string? a, string? b) => a is null ? b : b is null ? a : $"{a} {b}";
 
     /// <summary>The letter's date in the organisation's time zone (Reminders:TimeZone), not UTC.</summary>
     private DateOnly Today()

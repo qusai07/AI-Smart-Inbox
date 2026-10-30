@@ -5,10 +5,10 @@
   "categories": [
     "Request"
   ],
-  "subjectEn": "Acknowledgement of your letter ref. {TheirReference}",
-  "subjectAr": "إشعار باستلام خطابكم رقم {TheirReference}",
-  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your letter ref. {TheirReference} dated {TheirDate}. Your request has been referred to {DepartmentTeam}, which is now reviewing it, and we will contact you once the review is complete.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنود إفادتكم باستلام خطابكم رقم {TheirReference} المؤرخ في {TheirDate}، وقد أُحيل طلبكم إلى {DepartmentTeam} لدراسته، وسنتواصل معكم فور الانتهاء من ذلك.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "subjectEn": "Acknowledgement of your letter {TheirRef?}",
+  "subjectAr": "إشعار باستلام خطابكم {TheirRef?}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your letter {TheirRefDate?}. Your request has been referred to {DepartmentTeam}, which is now reviewing it, and we will contact you once the review is complete.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنود إفادتكم باستلام خطابكم {TheirRefDateM?}، وقد أُحيل طلبكم إلى {DepartmentTeam} لدراسته، وسنتواصل معكم فور الانتهاء من ذلك.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": [
     "We will contact the sender once the review is complete"
   ]

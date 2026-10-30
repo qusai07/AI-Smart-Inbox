@@ -5,10 +5,10 @@
   "categories": [
     "Legal"
   ],
-  "subjectEn": "Your notice ref. {TheirReference}",
-  "subjectAr": "بشأن إخطاركم رقم {TheirReference}",
-  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your notice ref. {TheirReference} dated {TheirDate}. The matter has been referred to {DepartmentTeam}, which will take the necessary action before {Deadline}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام إخطاركم رقم {TheirReference} المؤرخ في {TheirDate}، وقد أُحيل الموضوع إلى {DepartmentTeam} لاتخاذ الإجراءات اللازمة قبل {Deadline}.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "subjectEn": "Your notice {TheirRef?}",
+  "subjectAr": "بشأن إخطاركم {TheirRef?}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your notice {TheirRefDate?}. The matter has been referred to {DepartmentTeam}, which will take the necessary action before {Deadline}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام إخطاركم {TheirRefDateM?}، وقد أُحيل الموضوع إلى {DepartmentTeam} لاتخاذ الإجراءات اللازمة قبل {Deadline}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": [
     "The department will act before the deadline stated"
   ]

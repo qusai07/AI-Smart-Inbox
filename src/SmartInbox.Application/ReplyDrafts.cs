@@ -7,12 +7,8 @@ namespace SmartInbox.Application;
 
 public class DraftingOptions
 {
+    /// <summary>Drafting uses templates only: free, offline, no AI (see docs/EVALS-drafting.md for why).</summary>
     public bool Enabled { get; set; } = true;
-    /// <summary>Templates (no AI) | Hybrid (templates + local Ollama, default) | Ollama | Claude (paid, optional).</summary>
-    public string Engine { get; set; } = "Hybrid";
-    public string OllamaModel { get; set; } = "qwen2.5:3b";
-    /// <summary>Let the local model write the Arabic paragraph too. Off until the evals show it's good enough.</summary>
-    public bool LocalArabic { get; set; }
     public string OrganisationNameEn { get; set; } = "Ministry of Digital Services – Demo";
     public string OrganisationNameAr { get; set; } = "وزارة الخدمات الرقمية – تجريبي";
 }

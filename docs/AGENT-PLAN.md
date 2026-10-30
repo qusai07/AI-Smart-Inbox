@@ -201,10 +201,18 @@ On the document page, a **Reply** panel:
 | 1 | `ReplyDraft` entity + migration, department signatory fields, `ReplyDraftService`, permissions, timeline, API endpoints | ☑ |
 | 2 | Bilingual template files + selector + slot filler; `TemplateReplyDrafter`; background worker; template catalog endpoint; unit tests | ☑ |
 | 3 | Web UI: Reply panel (templates only) | ☑ |
-| 4 | **Measure templates** on the 20 samples (right template? how much `[●]` left?) → `docs/EVALS-drafting.md` | ☐ |
-| 5 | **Only if step 4 shows a gap:** `HybridReplyDrafter` (Ollama paragraph, 3b vs 7b, Arabic on/off); then Word export, webhooks `draft.*`, SDK 0.3.0, MCP tools | ☐ |
+| 4 | **Measure templates** on the 20 samples (right template? how much `[●]` left?) → `docs/EVALS-drafting.md` | ☑ |
+| 5 | ~~`HybridReplyDrafter` (Ollama)~~ — not built, see the decision below. Word export, webhooks `draft.*`, SDK 0.3.0, MCP tools | ☐ |
 
 Order changed after review: templates first, measured, and the local model added only where it proves it helps.
+
+### Decision after measuring (Day 4)
+
+`docs/EVALS-drafting.md`, templates only, on the free rule engine: right template **90%**, half the letters complete except our own outgoing reference, **0.5 gaps** per letter otherwise, and **100%** of the references and dates in drafts found in the letters.
+
+Of the remaining gaps, most are **decisions only a person can make** (when we will reply, who represents the Ministry, the payment date): no model — local or paid — can know them, and guessing would be worse than `[●]`. Only two letters needed "the reply to what they asked": a thank-you letter (now a template, free and always correct) and a security advisory (needs a person to confirm what was done). **So the local-model drafter is not built.** The `IReplyDrafter` interface keeps the door open if real correspondence shows a different picture.
+
+Measurement also improved the templates: letters without a reference number or date now read naturally ("your letter dated 3 February 2027", or simply "your complaint") instead of leaving a gap, with correct Arabic agreement (المؤرخ / المؤرخة).
 
 ---
 

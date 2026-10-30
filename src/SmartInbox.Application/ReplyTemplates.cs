@@ -68,6 +68,11 @@ public sealed class SlotValues : Dictionary<string, string?>
         ["SenderName"] = "Recipient (who the reply is addressed to)",
         ["TheirReference"] = "Their reference number",
         ["TheirDate"] = "Date of their letter",
+        // Optional phrases (used as {TheirRef?} etc.): "ref. X" and "ref. X dated Y", or less when they're unknown.
+        ["TheirRef"] = "Their reference number",
+        ["TheirRefDate"] = "Their reference number and date",
+        ["TheirRefDateM"] = "Their reference number and date",
+        ["TheirRefDateF"] = "Their reference number and date",
         ["Deadline"] = "Deadline",
         ["DepartmentTeam"] = "Department",
         ["Department"] = "Department",
@@ -94,7 +99,7 @@ public static partial class TemplateRenderer
         var lines = new List<string>();
         foreach (var line in template.Split('\n'))
         {
-            var hadOptional = false;
+            var emptiedOptional = false;
             var rendered = Marker().Replace(line, m =>
             {
                 var name = m.Groups["name"].Value.Trim();
@@ -107,17 +112,29 @@ public static partial class TemplateRenderer
                 if (!string.IsNullOrWhiteSpace(value)) return value;
                 if (m.Groups["optional"].Success)
                 {
-                    hadOptional = true;
+                    emptiedOptional = true;
                     return "";
                 }
                 missing.Add(SlotValues.MissingLabels.GetValueOrDefault(name, name));
                 return ReplyDraftRules.Placeholder;
             });
-            if (hadOptional && string.IsNullOrWhiteSpace(rendered)) continue; // an empty optional line disappears
+            if (emptiedOptional)
+            {
+                if (string.IsNullOrWhiteSpace(rendered)) continue; // an empty optional line disappears
+                rendered = Tidy(rendered);                          // "your letter ." → "your letter."
+            }
             lines.Add(rendered);
         }
         return new RenderedText(string.Join('\n', lines), missing.Distinct().ToList());
     }
+
+    [GeneratedRegex(@"[ 	]{2,}")]
+    private static partial Regex Spaces();
+
+    [GeneratedRegex(@"[ 	]+([.,،:;])")]
+    private static partial Regex SpaceBeforePunctuation();
+
+    private static string Tidy(string line) => SpaceBeforePunctuation().Replace(Spaces().Replace(line, " "), "$1").TrimEnd();
 
     /// <summary>Every {Slot} must be one the drafter knows how to fill; typos would silently become [●].</summary>
     public static void Validate(ReplyTemplate t)
