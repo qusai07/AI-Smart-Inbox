@@ -176,11 +176,43 @@ async function revokeKey() {
   }
 }
 
+// ── Reply signatures ──────────────────────────────────────────────
+type Signatory = { nameEn: string; nameAr: string; titleEn: string; titleAr: string }
+const signatories = reactive<Record<number, Signatory>>({})
+const savingSignatory = ref<number | null>(null)
+
+const signatoryOf = (id: number): Signatory => {
+  const d = departments.items.find((x) => x.id === id)
+  return { nameEn: d?.signatoryNameEn ?? '', nameAr: d?.signatoryNameAr ?? '', titleEn: d?.signatoryTitleEn ?? '', titleAr: d?.signatoryTitleAr ?? '' }
+}
+const signatoryChanged = (id: number) => {
+  const saved = signatoryOf(id)
+  const now = signatories[id]
+  return !!now && (Object.keys(saved) as (keyof Signatory)[]).some((k) => now[k].trim() !== saved[k])
+}
+
+async function saveSignatory(id: number) {
+  savingSignatory.value = id
+  try {
+    const s = signatories[id]
+    const body = { nameEn: s.nameEn.trim() || null, nameAr: s.nameAr.trim() || null, titleEn: s.titleEn.trim() || null, titleAr: s.titleAr.trim() || null }
+    await api.setDepartmentSignatory(id, body)
+    const d = departments.items.find((x) => x.id === id)
+    if (d) Object.assign(d, { signatoryNameEn: body.nameEn, signatoryNameAr: body.nameAr, signatoryTitleEn: body.titleEn, signatoryTitleAr: body.titleAr })
+    toast.add({ severity: 'success', summary: t('admin.saved'), life: 2000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('errors.generic'), detail: (e as Error).message, life: 5000 })
+  } finally {
+    savingSignatory.value = null
+  }
+}
+
 onMounted(async () => {
   await Promise.all([load(), loadKeys(), departments.load()])
   for (const d of departments.items) {
     emails[d.id] = d.email ?? ''
     heads[d.id] = d.headEmail ?? ''
+    signatories[d.id] = signatoryOf(d.id)
   }
 })
 </script>
@@ -251,6 +283,35 @@ onMounted(async () => {
         <InputText v-model="emails[d.id]" type="email" :placeholder="t('admin.emailPlaceholder')" dir="ltr" class="grow" :aria-label="t('admin.deptEmail')" />
         <InputText v-model="heads[d.id]" type="email" :placeholder="t('admin.headPlaceholder')" dir="ltr" class="grow" :aria-label="t('admin.headEmail')" />
         <Button :label="t('admin.save')" size="small" outlined class="save-col" :loading="savingEmail === d.id" :disabled="!changed(d.id)" @click="saveEmail(d.id)" />
+      </div>
+    </div>
+  </section>
+
+  <section class="card block">
+    <div class="block-head">
+      <div>
+        <h2>{{ t('admin.signatures') }}</h2>
+        <p class="small muted hint">{{ t('admin.signaturesHint') }}</p>
+      </div>
+    </div>
+    <div class="emails">
+      <div class="email-row head-row">
+        <span class="dept" />
+        <span class="grow col-head">{{ t('admin.titleEn') }}</span>
+        <span class="grow col-head">{{ t('admin.titleAr') }}</span>
+        <span class="grow col-head">{{ t('admin.nameEn') }} <small class="faint">· {{ t('admin.optional') }}</small></span>
+        <span class="grow col-head">{{ t('admin.nameAr') }} <small class="faint">· {{ t('admin.optional') }}</small></span>
+        <span class="save-col" />
+      </div>
+      <div v-for="d in departments.items" :key="d.id" class="email-row">
+        <span class="dept">{{ departmentName(d.id) }}</span>
+        <template v-if="signatories[d.id]">
+          <InputText v-model="signatories[d.id].titleEn" dir="ltr" class="grow" maxlength="150" :placeholder="t('admin.titleEn')" :aria-label="t('admin.titleEn')" />
+          <InputText v-model="signatories[d.id].titleAr" dir="rtl" class="grow" maxlength="150" :placeholder="t('admin.titleAr')" :aria-label="t('admin.titleAr')" />
+          <InputText v-model="signatories[d.id].nameEn" dir="ltr" class="grow" maxlength="150" :placeholder="t('admin.nameEn')" :aria-label="t('admin.nameEn')" />
+          <InputText v-model="signatories[d.id].nameAr" dir="rtl" class="grow" maxlength="150" :placeholder="t('admin.nameAr')" :aria-label="t('admin.nameAr')" />
+        </template>
+        <Button :label="t('admin.save')" size="small" outlined class="save-col" :loading="savingSignatory === d.id" :disabled="!signatoryChanged(d.id)" @click="saveSignatory(d.id)" />
       </div>
     </div>
   </section>

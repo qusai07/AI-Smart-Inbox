@@ -88,7 +88,9 @@ const en = {
     demo: 'Demo accounts',
   },
   admin: {
-    title: 'Administration', subtitle: 'People, roles and department email addresses.', nav: 'Administration',
+    title: 'Administration', subtitle: 'People, roles, departments, API keys and webhooks.', nav: 'Administration',
+    signatures: 'Reply signatures', signaturesHint: 'Printed under every reply letter from the department. Leave a title empty to leave a [●] for whoever finishes the draft.',
+    titleEn: 'Title (English)', titleAr: 'المسمى (عربي)', nameEn: 'Name (English)', nameAr: 'الاسم (عربي)', optional: 'optional',
     users: 'Users', departments: 'Department emails', add: 'Add user', name: 'Name', role: 'Role', department: 'Department',
     signIn: 'Sign-in', lastSeen: 'Last sign-in', never: 'Never', password: 'Password', passwordHint: 'Leave empty for Microsoft-only sign-in',
     disabled: 'Disabled', active: 'Active', save: 'Save', saved: 'Saved', edit: 'Edit', setPassword: 'Set password',
@@ -222,7 +224,9 @@ const ar: typeof en = {
     demo: 'حسابات تجريبية',
   },
   admin: {
-    title: 'الإدارة', subtitle: 'المستخدمون والأدوار وعناوين بريد الإدارات.', nav: 'الإدارة',
+    title: 'الإدارة', subtitle: 'المستخدمون والأدوار والإدارات ومفاتيح الواجهة البرمجية والويب هوك.', nav: 'الإدارة',
+    signatures: 'توقيعات الردود', signaturesHint: 'يظهر أسفل كل رد صادر عن الإدارة. إذا تُرك المسمى فارغاً يظهر [●] لمن يكمل المسودة.',
+    titleEn: 'Title (English)', titleAr: 'المسمى (عربي)', nameEn: 'Name (English)', nameAr: 'الاسم (عربي)', optional: 'اختياري',
     users: 'المستخدمون', departments: 'بريد الإدارات', add: 'إضافة مستخدم', name: 'الاسم', role: 'الدور', department: 'الإدارة',
     signIn: 'طريقة الدخول', lastSeen: 'آخر دخول', never: 'لم يدخل', password: 'كلمة المرور', passwordHint: 'اتركها فارغة للدخول عبر Microsoft فقط',
     disabled: 'معطّل', active: 'نشط', save: 'حفظ', saved: 'تم الحفظ', edit: 'تعديل', setPassword: 'تعيين كلمة مرور',
