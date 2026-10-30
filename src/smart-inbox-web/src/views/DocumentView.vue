@@ -327,6 +327,7 @@ watch(() => props.id, load, { immediate: true })
                   option-label="label"
                   option-value="value"
                   :placeholder="t('work.assignPlaceholder')"
+                  :empty-message="t('work.noStaff')"
                   show-clear
                   size="small"
                   class="assignee-select"
@@ -355,10 +356,11 @@ watch(() => props.id, load, { immediate: true })
                 <template v-else-if="closedEmail.status === 'Failed'">{{ t('notify.closedFailed', { to: closedEmail.to }) }}: {{ closedEmail.error }}</template>
                 <template v-else>{{ t('notify.closedPending', { to: closedEmail.to }) }}</template>
               </p>
-              <p v-for="o in doc.outgoing ?? []" :key="o.id" class="email-status small replied" :class="{ cancelled: o.status === 'Cancelled' }">
+              <!-- Plain text flow, not flex: the left-to-right number must wrap with the Arabic text, never overlap it -->
+              <p v-for="o in doc.outgoing ?? []" :key="o.id" class="small replied" :class="{ cancelled: o.status === 'Cancelled' }">
                 <i class="pi pi-hashtag" />
-                {{ t('detail.repliedWith') }}
-                <RouterLink :to="{ name: 'register', query: { q: o.number } }" class="ltr num">{{ o.number }}</RouterLink>
+                <span>{{ t('detail.repliedWith') }}</span>
+                <bdi><RouterLink :to="{ name: 'register', query: { q: o.number } }" class="num" dir="ltr">{{ o.number }}</RouterLink></bdi>
                 <span class="faint">· {{ t(`register.status.${o.status}`) }} · {{ formatDateTime(o.issuedAt, locale) }}</span>
               </p>
               <RouterLink
@@ -681,6 +683,15 @@ watch(() => props.id, load, { immediate: true })
   align-items: center;
   gap: 6px;
   margin-top: 6px;
+}
+.replied {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.replied > * + * {
+  margin-inline-start: 6px;
 }
 .replied .num {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

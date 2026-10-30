@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Toast from 'primevue/toast'
 import Button from 'primevue/button'
+import { usePrimeVue } from 'primevue/config'
 import UploadDialog from './components/UploadDialog.vue'
 import WhatsNew from './components/WhatsNew.vue'
 import { applyLocale } from './i18n'
@@ -14,6 +15,18 @@ import { useDepartments } from './stores/departments'
 import { useStats } from './stores/stats'
 
 const { t, locale } = useI18n()
+
+// PrimeVue's own texts (empty lists, close buttons) follow the app's language.
+const primevue = usePrimeVue()
+watch(locale, () => {
+  const l = primevue.config.locale
+  if (!l) return
+  l.emptyMessage = t('prime.empty')
+  l.emptyFilterMessage = t('prime.emptyFilter')
+  l.emptySearchMessage = t('prime.emptyFilter')
+  l.emptySelectionMessage = t('prime.emptySelection')
+  if (l.aria) l.aria.close = t('prime.close')
+}, { immediate: true })
 const route = useRoute()
 const router = useRouter()
 const auth = useAuth()

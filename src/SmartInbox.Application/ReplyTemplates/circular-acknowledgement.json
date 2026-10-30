@@ -8,7 +8,7 @@
   "subjectEn": "Circular {TheirRef?}",
   "subjectAr": "بشأن التعميم {TheirRef?}",
   "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your circular {TheirRefDate?}. Its contents have been noted and shared with the relevant teams, and {DepartmentTeam} will follow up on its implementation.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام تعميمكم {TheirRefDateM?}، وقد تم الاطلاع على ما ورد فيه وتعميمه على الفرق المعنية، وستتولى {DepartmentTeam} متابعة تنفيذه.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام تعميمكم {TheirRefDateM?}، وقد تم الاطلاع على ما ورد فيه وتعميمه على الفرق المعنية، وستتولى {DepartmentTeam} متابعة تنفيذه.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": [
     "The department will follow up on implementing the circular"
   ]

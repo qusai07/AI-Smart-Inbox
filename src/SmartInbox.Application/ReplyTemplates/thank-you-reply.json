@@ -6,6 +6,6 @@
   "subjectEn": "Your letter {TheirRef?}",
   "subjectAr": "بشأن خطابكم {TheirRef?}",
   "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe thank you for your kind letter {TheirRefDate?} and for your generous words. It was a pleasure for the Ministry to take part, and we look forward to continued cooperation.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنتقدم إليكم بخالص الشكر على خطابكم الكريم {TheirRefDateM?} وعلى كلماتكم الطيبة، وقد سعدت الوزارة بالمشاركة، ونتطلع إلى استمرار التعاون المثمر بيننا.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنتقدم إليكم بخالص الشكر على خطابكم الكريم {TheirRefDateM?} وعلى كلماتكم الطيبة، وقد سعدت الوزارة بالمشاركة، ونتطلع إلى استمرار التعاون المثمر بيننا.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": []
 }

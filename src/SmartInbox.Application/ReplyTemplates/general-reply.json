@@ -8,6 +8,6 @@
   "subjectEn": "Your letter {TheirRef?}",
   "subjectAr": "بشأن خطابكم {TheirRef?}",
   "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWith reference to your letter {TheirRefDate?}, we would like to inform you that {Response}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nإشارة إلى خطابكم {TheirRefDateM?}، نود إفادتكم بأن {Response}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nإشارة إلى خطابكم {TheirRefDateM?}، نود إفادتكم بأن {Response}.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": []
 }

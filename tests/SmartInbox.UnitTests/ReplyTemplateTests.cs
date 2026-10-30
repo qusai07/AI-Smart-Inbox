@@ -32,6 +32,10 @@ public class ReplyTemplateTests
             Assert.False(string.IsNullOrWhiteSpace(t.NameAr));
             Assert.Contains("تحية طيبة وبعد", t.BodyAr);
             Assert.Contains("Dear Sir/Madam", t.BodyEn);
+            // Each letter closes in its own language.
+            Assert.Contains("وتفضلوا بقبول فائق الاحترام", t.BodyAr);
+            Assert.Contains("Yours sincerely", t.BodyEn);
+            Assert.DoesNotMatch(@"[A-Za-z]{3,}", System.Text.RegularExpressions.Regex.Replace(t.BodyAr, @"\{[^}]*\}", ""));
         });
     }
 

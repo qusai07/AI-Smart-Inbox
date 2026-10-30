@@ -6,6 +6,6 @@
   "subjectEn": "Request for additional information – your letter {TheirRef?}",
   "subjectAr": "طلب معلومات إضافية بشأن خطابكم {TheirRef?}",
   "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWith reference to your letter {TheirRefDate?}, and in order to complete our review, we kindly ask you to provide the following:\n\n- {?Information or documents needed}\n\nPlease send them to {DepartmentTeam}, quoting our reference above.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nإشارة إلى خطابكم {TheirRefDateM?}، ولاستكمال دراسة الموضوع، نرجو التكرم بتزويدنا بما يلي:\n\n- {?Information or documents needed}\n\nعلى أن تُرسل إلى {DepartmentTeam} مع الإشارة إلى رقمنا المذكور أعلاه.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nإشارة إلى خطابكم {TheirRefDateM?}، ولاستكمال دراسة الموضوع، نرجو التكرم بتزويدنا بما يلي:\n\n- {?Information or documents needed}\n\nعلى أن تُرسل إلى {DepartmentTeam} مع الإشارة إلى رقمنا المذكور أعلاه.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": []
 }

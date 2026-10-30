@@ -8,7 +8,7 @@
   "subjectEn": "Acceptance of your invitation {TheirRef?}",
   "subjectAr": "قبول دعوتكم {TheirRef?}",
   "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe thank you for your kind invitation {TheirRefDate?}, and are pleased to confirm that the Ministry will be represented by {?Name and title of the representative}.\n\nKindly share any further arrangements with {DepartmentTeam}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
-  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنتقدم إليكم بالشكر على دعوتكم الكريمة {TheirRefDateF?}، ويسرنا تأكيد مشاركة الوزارة ممثلةً في {?Name and title of the representative}.\n\nنرجو التكرم بموافاة {DepartmentTeam} بأي ترتيبات إضافية.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنتقدم إليكم بالشكر على دعوتكم الكريمة {TheirRefDateF?}، ويسرنا تأكيد مشاركة الوزارة ممثلةً في {?Name and title of the representative}.\n\nنرجو التكرم بموافاة {DepartmentTeam} بأي ترتيبات إضافية.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
   "commitments": [
     "The Ministry will attend, represented by the person named"
   ]
