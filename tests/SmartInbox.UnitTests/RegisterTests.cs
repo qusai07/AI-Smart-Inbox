@@ -191,6 +191,122 @@ public class RegisterTests : IDisposable
         Assert.Equal(["MDS/OUT/2026/0002", "MDS/OUT/2026/0001"], all.Items.Select(l => l.Number));
     }
 
+    // ── Replies get their number on approval ─────────────────────────────────
+
+    private sealed class FailingWebhooks : IWebhookPublisher
+    {
+        private static readonly Task<IReadOnlyList<WebhookDelivery>> None = Task.FromResult<IReadOnlyList<WebhookDelivery>>([]);
+        public Task<IReadOnlyList<WebhookDelivery>> PublishAsync(string eventType, object data, IReadOnlyCollection<int> departmentIds, CancellationToken ct, string? dedupKey = null) =>
+            eventType == WebhookEvents.RegisterIssued ? throw new InvalidOperationException("outbox down") : None;
+        public Task<IReadOnlyList<WebhookDelivery>> PublishDocumentAsync(string eventType, Document d, string? actor, CancellationToken ct, int? previousDepartmentId = null, string? dedupKey = null) => None;
+        public Task<IReadOnlyList<WebhookDelivery>> PublishDraftAsync(string eventType, ReplyDraft draft, Document d, string? actor, CancellationToken ct) => None;
+    }
+
+    private static async Task<Guid> ReadyDraftAsync(SmartInboxDbContext db, bool withMarker = true)
+    {
+        db.WebhookEndpoints.Add(new WebhookEndpoint { Url = "https://hooks.example.com", Secret = "p:x" });
+        var doc = new Document { FileName = "notice.txt", ContentType = "text/plain", StoragePath = "x", Status = DocumentStatus.Routed, AssignedDepartmentId = 2 };
+        doc.Analysis = new DocumentAnalysis { DocumentId = doc.Id, Category = DocumentCategory.Legal, Sender = "Demo City Court" };
+        var ours = withMarker ? ReplyDraftRules.NumberMarkerEn : "MDS/OUT/2026/0007";
+        var draft = new ReplyDraft
+        {
+            DocumentId = doc.Id, Status = ReplyDraftStatus.Ready, Engine = "Templates",
+            SubjectEn = "Your notice ref. 2027/118", BodyEn = $"Our ref: {ours}\n\nWe acknowledge receipt.",
+            SubjectAr = "بشأن إخطاركم رقم 2027/118",
+            BodyAr = $"رقمنا: {(withMarker ? ReplyDraftRules.NumberMarkerAr : ours)}\n\nنفيدكم بالاستلام.",
+        };
+        db.Documents.Add(doc);
+        db.ReplyDrafts.Add(draft);
+        await db.SaveChangesAsync();
+        return draft.Id;
+    }
+
+    private ReplyDraftService Drafts(SmartInboxDbContext db, IWebhookPublisher? webhooks = null)
+    {
+        webhooks ??= new WebhookPublisher(db, new NotificationOptions { AppBaseUrl = "http://inbox.test" });
+        return new ReplyDraftService(db, Clerk, new DraftingOptions(), new RecordingDraftQueue(), new RecordingNotifier(),
+            webhooks: webhooks, register: new RegisterService(db, Clerk, new RegisterOptions(), _clock, null, webhooks, new NotificationOptions { AppBaseUrl = "http://inbox.test" }));
+    }
+
+    [Fact]
+    public async Task Approve_IssuesTheNumber_IntoBothLanguages_AndTheRegister()
+    {
+        using var db = Db();
+        var draftId = await ReadyDraftAsync(db);
+
+        var result = await Drafts(db).ApproveAsync(draftId, default);
+
+        Assert.Equal(ReplyDraftService.Outcome.Ok, result.Outcome);
+        Assert.Equal("MDS/OUT/2026/0001", result.Draft!.OutgoingNumber);
+        using var check = Db();
+        var draft = check.ReplyDrafts.Single();
+        Assert.Equal(ReplyDraftStatus.Approved, draft.Status);
+        Assert.StartsWith("Our ref: MDS/OUT/2026/0001", draft.BodyEn);
+        Assert.StartsWith("رقمنا: MDS/OUT/2026/0001", draft.BodyAr);
+        Assert.False(ReplyDraftRules.HasNumberMarker(draft.BodyEn, draft.BodyAr));
+
+        var entry = check.OutgoingLetters.Single();
+        Assert.Equal(draft.Id, entry.ReplyDraftId);
+        Assert.Equal(draft.DocumentId, entry.DocumentId);
+        Assert.Equal("Demo City Court", entry.Recipient);
+        Assert.Equal("Your notice ref. 2027/118", entry.SubjectEn);
+        Assert.Equal(2, entry.DepartmentId);
+
+        Assert.Contains(check.DocumentEvents, e => e.Type == DocumentEventType.DraftApproved);
+        Assert.Contains(check.DocumentEvents, e => e.Type == DocumentEventType.OutgoingIssued && e.Note == "MDS/OUT/2026/0001");
+        var issued = Assert.Single(check.WebhookDeliveries, w => w.EventType == WebhookEvents.RegisterIssued);
+        Assert.Contains("\"number\":\"MDS/OUT/2026/0001\"", issued.Payload);
+        Assert.DoesNotContain("acknowledge", issued.Payload); // thin
+        Assert.Single(check.WebhookDeliveries, w => w.EventType == WebhookEvents.DraftApproved);
+    }
+
+    [Fact]
+    public async Task Approve_ThatFails_BurnsNoNumber_AndLeavesTheDraftReady()
+    {
+        using (var db = Db())
+        {
+            var draftId = await ReadyDraftAsync(db);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Drafts(db, new FailingWebhooks()).ApproveAsync(draftId, default));
+        }
+
+        using var check = Db();
+        Assert.Equal(ReplyDraftStatus.Ready, check.ReplyDrafts.Single().Status);
+        Assert.Contains(ReplyDraftRules.NumberMarkerEn, check.ReplyDrafts.Single().BodyEn);
+        Assert.Empty(check.OutgoingLetters);
+        Assert.DoesNotContain(check.DocumentEvents, e => e.Type == DocumentEventType.DraftApproved);
+        Assert.Equal("MDS/OUT/2026/0001", (await Register(check).IssueAsync(Letter(), default)).Letter!.Number);
+    }
+
+    [Fact]
+    public async Task Approve_WithANumberTypedByHand_IssuesNone()
+    {
+        using var db = Db();
+        var draftId = await ReadyDraftAsync(db, withMarker: false);
+
+        var result = await Drafts(db).ApproveAsync(draftId, default);
+
+        Assert.Equal(ReplyDraftStatus.Approved, result.Draft!.Status);
+        Assert.Null(result.Draft.OutgoingNumber);
+        using var check = Db();
+        Assert.Empty(check.OutgoingLetters);
+    }
+
+    [Fact]
+    public void Csv_QuotesEverything_AndDefusesFormulas()
+    {
+        var letter = new OutgoingLetterDto(Guid.NewGuid(), "MDS/OUT/2026/0001", 2026, 1, 2, "=HYPERLINK(\"http://x\")", "Re: \"notice\"", "بشأن",
+            null, null, new DateTime(2026, 10, 30, 8, 0, 0), "Sara", OutgoingStatus.Issued, null, null, null, null, null, null);
+
+        var text = System.Text.Encoding.UTF8.GetString(RegisterCsv.Write([letter], new Dictionary<int, string> { [2] = "Legal Affairs" }));
+
+        var row = text.Split('\n')[1];
+        Assert.StartsWith("﻿Number,", text);
+        Assert.Contains("\"'=HYPERLINK(\"\"http://x\"\")\"", row);
+        Assert.Contains("\"Re: \"\"notice\"\"\"", row);
+        Assert.Contains("\"Legal Affairs\"", row);
+        Assert.Contains("\"بشأن\"", row);
+    }
+
     [Theory]
     [InlineData("Court", "Re: notice", null, true)]
     [InlineData("", "Re: notice", null, false)]

@@ -44,6 +44,32 @@ public static partial class OutgoingNumber
             .Replace("{Dept}", departmentCode ?? "GEN");
 }
 
+public static class RegisterCsv
+{
+    public static byte[] Write(IEnumerable<OutgoingLetterDto> letters, IReadOnlyDictionary<int, string> departments)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Number,Issued (UTC),Issued by,Department,Recipient,Subject (EN),Subject (AR),Status,Sent (UTC),Sent via,Cancel reason,Incoming document");
+        foreach (var l in letters)
+            sb.AppendLine(string.Join(',', new[]
+            {
+                l.Number, l.IssuedAt.ToString("yyyy-MM-dd HH:mm"), l.IssuedBy, departments.GetValueOrDefault(l.DepartmentId), l.Recipient,
+                l.SubjectEn, l.SubjectAr, l.Status.ToString(), l.SentAt?.ToString("yyyy-MM-dd HH:mm"), l.SentVia?.ToString(), l.CancelReason,
+                l.DocumentId?.ToString(),
+            }.Select(Cell)));
+        // BOM so Excel opens the Arabic subjects as UTF-8.
+        return [.. System.Text.Encoding.UTF8.GetPreamble(), .. System.Text.Encoding.UTF8.GetBytes(sb.ToString())];
+    }
+
+    /// <summary>Quoted, and text that a spreadsheet would run as a formula (=, +, -, @) is made plain text.</summary>
+    private static string Cell(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        if (value[0] is '=' or '+' or '-' or '@' or '\t' or '\r') value = "'" + value;
+        return $"\"{value.Replace("\"", "\"\"")}\"";
+    }
+}
+
 public record IssueRequest(int DepartmentId, string? Recipient, string? SubjectEn, string? SubjectAr, Guid? DocumentId = null);
 
 public record MarkSentRequest(SentVia Via, DateTime? SentAt = null, string? Note = null);
@@ -80,6 +106,17 @@ public class MarkSentRequestValidator : AbstractValidator<MarkSentRequest>
     public MarkSentRequestValidator() => RuleFor(x => x.Note).MaximumLength(500);
 }
 
+public class RegisterQueryValidator : AbstractValidator<RegisterQuery>
+{
+    public RegisterQueryValidator()
+    {
+        RuleFor(x => x.Year).InclusiveBetween(2000, 2100).When(x => x.Year is not null);
+        RuleFor(x => x.Q).MaximumLength(200);
+        RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 500);
+    }
+}
+
 public class CancelRequestValidator : AbstractValidator<CancelRequest>
 {
     public CancelRequestValidator() => RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
@@ -89,7 +126,9 @@ public class CancelRequestValidator : AbstractValidator<CancelRequest>
 /// The outgoing register. Numbers are issued in the same save as the entry (and whatever the caller changes alongside,
 /// e.g. an approved reply), so a failure never burns a number; a clash with someone issuing at the same moment is retried.
 /// </summary>
-public class RegisterService(IAppDbContext db, ICurrentUser user, RegisterOptions options, TimeProvider clock, ReminderOptions? reminders = null)
+public class RegisterService(
+    IAppDbContext db, ICurrentUser user, RegisterOptions options, TimeProvider clock, ReminderOptions? reminders = null,
+    IWebhookPublisher? webhooks = null, NotificationOptions? links = null)
 {
     /// <summary>Plenty for real use; a burst of simultaneous issues each retry after a short random pause.</summary>
     private const int MaxTries = 60;
@@ -130,6 +169,16 @@ public class RegisterService(IAppDbContext db, ICurrentUser user, RegisterOption
                 DocumentId = request.DocumentId, ReplyDraftId = replyDraftId, IssuedBy = user.Name,
             };
             db.OutgoingLetters.Add(letter);
+            var timeline = request.DocumentId is { } docId
+                ? db.DocumentEvents.Add(new DocumentEvent
+                {
+                    DocumentId = docId, Type = DocumentEventType.OutgoingIssued, Actor = user.Name, DepartmentId = department.Id, Note = letter.Number,
+                }).Entity
+                : null;
+            var deliveries = webhooks is null ? [] : await webhooks.PublishAsync(WebhookEvents.RegisterIssued,
+                new WebhookRegisterData(letter.Id, letter.Number, letter.DepartmentId, letter.DocumentId, letter.ReplyDraftId, letter.IssuedBy,
+                    letter.DocumentId is { } d && links is not null ? $"{links.AppBaseUrl.TrimEnd('/')}/documents/{d}" : null),
+                Audience.Of(department.Id), ct);
             alongside?.Invoke(letter);
             try
             {
@@ -141,6 +190,8 @@ public class RegisterService(IAppDbContext db, ICurrentUser user, RegisterOption
                 // Someone else took this number (or created this year's counter) first: forget ours and try the next one.
                 db.OutgoingLetters.Entry(letter).State = EntityState.Detached;
                 db.RegisterCounters.Entry(counter).State = EntityState.Detached;
+                if (timeline is not null) db.DocumentEvents.Entry(timeline).State = EntityState.Detached;
+                foreach (var w in deliveries) db.WebhookDeliveries.Entry(w).State = EntityState.Detached;
                 await Task.Delay(Random.Shared.Next(1, 5 + Math.Min(attempt, 10) * 5), ct);
             }
         }
@@ -159,12 +210,22 @@ public class RegisterService(IAppDbContext db, ICurrentUser user, RegisterOption
                                      || (l.SubjectEn != null && l.SubjectEn.Contains(term)) || (l.SubjectAr != null && l.SubjectAr.Contains(term)));
         }
         var page = Math.Max(1, q.Page);
-        var size = Math.Clamp(q.PageSize, 1, 500);
+        var size = Math.Clamp(q.PageSize, 1, MaxExport);
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(l => l.Year).ThenByDescending(l => l.Sequence).ThenByDescending(l => l.IssuedAt)
             .Skip((page - 1) * size).Take(size).ToListAsync(ct);
         return new PagedResult<OutgoingLetterDto>(items.Select(OutgoingLetterDto.From).ToList(), total, page, size);
     }
+
+    /// <summary>Everything matching the filters (ignoring paging, up to <see cref="MaxExport"/> rows) as CSV.</summary>
+    public async Task<byte[]> ExportCsvAsync(RegisterQuery q, CancellationToken ct)
+    {
+        var all = await ListAsync(q with { Page = 1, PageSize = MaxExport }, ct);
+        var departments = await db.Departments.AsNoTracking().ToDictionaryAsync(d => d.Id, d => d.NameEn, ct);
+        return RegisterCsv.Write(all.Items, departments);
+    }
+
+    public const int MaxExport = 10_000;
 
     public async Task<OutgoingLetterDto?> GetAsync(Guid id, CancellationToken ct) =>
         await Visible().FirstOrDefaultAsync(l => l.Id == id, ct) is { } l ? OutgoingLetterDto.From(l) : null;

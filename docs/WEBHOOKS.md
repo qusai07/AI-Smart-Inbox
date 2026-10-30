@@ -33,6 +33,7 @@ Every delivery appears in the endpoint's **Deliveries** log with the status code
 | `deadline.approaching` | An open, routed document's deadline is today or within the next 2 days (`Webhooks:DeadlineWarningDays`). Once per document, department and deadline: it fires again after re-routing or a new deadline |
 | `draft.ready` | A reply draft has been prepared and waits for a person. `data`: `draftId`, `documentId`, `version`, `status`, `templateKey`, `departmentId`, `actor`, `url` — never the letter text |
 | `draft.approved` | A person approved a reply (same `data`; fetch the text with `GET /api/drafts/{draftId}`) |
+| `register.issued` | An outgoing number was issued — on approving a reply, or by hand. `data`: `outgoingLetterId`, `number`, `departmentId`, `documentId`, `replyDraftId`, `issuedBy`, `url` |
 | `webhook.ping` | An admin clicked **Send test** (not subscribable) |
 
 Unrouted documents (`received`, `analyzed`, `analysis_failed` before routing) only go to endpoints that are not limited to a department.

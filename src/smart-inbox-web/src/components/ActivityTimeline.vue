@@ -27,6 +27,7 @@ const icons: Record<DocumentEvent['type'], string> = {
   DraftEdited: 'pi pi-pencil',
   DraftApproved: 'pi pi-check-circle',
   DraftRejected: 'pi pi-times-circle',
+  OutgoingIssued: 'pi pi-hashtag',
 }
 
 function actor(e: DocumentEvent) {

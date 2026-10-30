@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Net;
+using System.Text.RegularExpressions;
 using SmartInbox.Client.Webhooks;
 
 namespace SmartInbox.Client.Tests;
@@ -25,7 +26,7 @@ public class DraftsApiTests(SmartInboxFactory server)
     }
 
     [Fact]
-    public async Task Draft_FillTheGap_Approve_DownloadWord()
+    public async Task Draft_Edit_Approve_GetsItsNumber_DownloadWord()
     {
         var (inbox, docId) = await RoutedNoticeAsync();
         Assert.Contains(await inbox.Drafts.ListTemplatesAsync(), t => t.Key == "legal-acknowledgement" && t.Categories.Contains(DocumentCategory.Legal));
@@ -38,28 +39,30 @@ public class DraftsApiTests(SmartInboxFactory server)
         Assert.Equal("Confirm counsel has been appointed", draft.Instructions);
         Assert.Contains("Legal Affairs", draft.BodyEn);
         Assert.Contains("تحية طيبة وبعد", draft.BodyAr);
-        Assert.Contains("Our outgoing reference number", draft.MissingInfo);
-        var approveTooEarly = await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Drafts.ApproveAsync(draft.Id));
-        Assert.Contains("[●]", approveTooEarly.Detail);
+        Assert.Contains("(issued on approval)", draft.BodyEn);   // our number comes from the register, not from a person
+        Assert.Equal(0, draft.Placeholders);
 
-        var filled = await inbox.Drafts.UpdateAsync(draft.Id, new ReplyText(
-            draft.SubjectEn!, draft.BodyEn!.Replace("[●]", "MDS/OUT/2026/0042"), draft.SubjectAr!, draft.BodyAr!.Replace("[●]", "MDS/OUT/2026/0042")));
-        Assert.Equal(2, filled.Version);
-        Assert.Equal(0, filled.Placeholders);
+        var edited = await inbox.Drafts.UpdateAsync(draft.Id, new ReplyText(
+            draft.SubjectEn!, draft.BodyEn + "\n\nCounsel has been appointed.", draft.SubjectAr!, draft.BodyAr!));
+        Assert.Equal(2, edited.Version);
         await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Drafts.ApproveAsync(draft.Id)); // not the latest any more
 
-        var approved = await inbox.Drafts.ApproveAsync(filled.Id);
+        var approved = await inbox.Drafts.ApproveAsync(edited.Id);
         Assert.Equal(DraftStatus.Approved, approved.Status);
         Assert.Equal("API key: Clerk test key", approved.DecidedBy);
+        var number = Regex.Match(approved.BodyEn!, @"MDS/OUT/\d{4}/\d{4}").Value;
+        Assert.NotEmpty(number);
+        Assert.Contains(number, approved.BodyAr);
+        Assert.DoesNotContain("(issued on approval)", approved.BodyEn);
         Assert.Equal([2, 1], (await inbox.Drafts.ListAsync(docId)).Select(d => d.Version));
 
-        var word = await inbox.Drafts.DownloadDocxAsync(filled.Id);
+        var word = await inbox.Drafts.DownloadDocxAsync(edited.Id);
         Assert.Equal("application/vnd.openxmlformats-officedocument.wordprocessingml.document", word.ContentType);
         Assert.Equal("reply-2027-118-v2.docx", word.FileName);
         using var zip = new ZipArchive(word.Content);
         using var xml = new StreamReader(zip.GetEntry("word/document.xml")!.Open());
         var body = await xml.ReadToEndAsync();
-        Assert.Contains("MDS/OUT/2026/0042", body);
+        Assert.Contains(number, body);
         Assert.Contains("الشؤون القانونية", body);
 
         var timeline = (await inbox.Documents.GetAsync(docId)).Timeline.Select(e => e.Type).ToList();
@@ -67,6 +70,7 @@ public class DraftsApiTests(SmartInboxFactory server)
         Assert.Contains("DraftReady", timeline);
         Assert.Contains("DraftEdited", timeline);
         Assert.Contains("DraftApproved", timeline);
+        Assert.Contains("OutgoingIssued", timeline);
     }
 
     [Fact]

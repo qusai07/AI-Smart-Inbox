@@ -50,7 +50,7 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
         var today = Today();
         var en = new SlotValues
         {
-            ["OurReference"] = null, // the outgoing register isn't built yet: a person fills it in
+            ["OurReference"] = ReplyDraftRules.NumberMarkerEn, // the register replaces it on approval
             ["Today"] = LetterDates.En(today),
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,
@@ -67,7 +67,7 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
         };
         var ar = new SlotValues
         {
-            ["OurReference"] = null,
+            ["OurReference"] = ReplyDraftRules.NumberMarkerAr,
             ["Today"] = LetterDates.ArWithHijri(today),
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,

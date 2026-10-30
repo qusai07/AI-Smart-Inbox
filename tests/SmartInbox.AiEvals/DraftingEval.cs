@@ -13,9 +13,6 @@ using SmartInbox.Infrastructure.Persistence;
 /// </summary>
 static class DraftingEval
 {
-    /// <summary>Gaps every draft has by design until the outgoing register exists.</summary>
-    private const string OurReference = "Our outgoing reference number";
-
     public record Row(
         string File, string Category, string ExpectedCategory, IReadOnlyList<string> Expected,
         string Chosen, string ChosenFromLabel, IReadOnlyList<string> Missing, IReadOnlyList<string> Unverified,
@@ -89,7 +86,7 @@ static class DraftingEval
     {
         var ok = rows.Where(r => r.Error is null).ToList();
         double Pct(Func<Row, bool> f) => ok.Count == 0 ? 0 : ok.Count(f) * 100.0 / ok.Count;
-        int Gaps(Row r) => r.Missing.Count(m => m != OurReference);
+        int Gaps(Row r) => r.Missing.Count;
 
         var md = new StringBuilder();
         md.AppendLine("# Drafting Evals");
@@ -102,19 +99,19 @@ static class DraftingEval
         md.AppendLine("|---|---|");
         md.AppendLine($"| Right template, end to end (from the analysis's category) | **{Pct(r => r.Expected.Contains(r.Chosen)):0}%** |");
         md.AppendLine($"| Right template if the category were correct (template mapping alone) | {Pct(r => r.Expected.Contains(r.ChosenFromLabel)):0}% |");
-        md.AppendLine($"| Complete except our own reference number | {Pct(r => Gaps(r) == 0):0}% |");
-        md.AppendLine($"| Average gaps for a person (besides our reference) | {(ok.Count == 0 ? 0 : ok.Average(Gaps)):0.0} |");
+        md.AppendLine($"| Complete (our number comes from the register) | {Pct(r => Gaps(r) == 0):0}% |");
+        md.AppendLine($"| Average gaps for a person | {(ok.Count == 0 ? 0 : ok.Average(Gaps)):0.0} |");
         md.AppendLine($"| Every reference and date in the draft found in the letter | {Pct(r => r.Unverified.Count == 0):0}% |");
         md.AppendLine($"| Time per draft | {(ok.Count == 0 ? 0 : ok.Average(r => r.Milliseconds)):0.0} ms |");
         md.AppendLine();
         md.AppendLine("Why gaps remain:");
         md.AppendLine();
-        foreach (var g in ok.SelectMany(r => r.Missing.Where(m => m != OurReference)).GroupBy(m => m).OrderByDescending(g => g.Count()))
+        foreach (var g in ok.SelectMany(r => r.Missing).GroupBy(m => m).OrderByDescending(g => g.Count()))
             md.AppendLine($"- {g.Key}: {g.Count()} letter(s)");
         md.AppendLine();
         md.AppendLine("<details><summary>Per-letter results</summary>");
         md.AppendLine();
-        md.AppendLine("| Letter | Category (expected → got) | Template (expected → chosen) | Gaps besides our reference | Not found in the letter |");
+        md.AppendLine("| Letter | Category (expected → got) | Template (expected → chosen) | Gaps | Not found in the letter |");
         md.AppendLine("|---|---|---|---|---|");
         foreach (var r in rows)
         {
@@ -123,7 +120,7 @@ static class DraftingEval
                 md.AppendLine($"| {r.File} | ❌ error: {r.Error.Replace("|", "/")} | | | |");
                 continue;
             }
-            var gaps = r.Missing.Where(m => m != OurReference).ToList();
+            var gaps = r.Missing.ToList();
             md.AppendLine($"| {r.File} | {Mark(r.Category == r.ExpectedCategory)} {r.ExpectedCategory} → {r.Category} " +
                           $"| {Mark(r.Expected.Contains(r.Chosen))} {string.Join(" / ", r.Expected)} → {r.Chosen} " +
                           $"| {(gaps.Count == 0 ? "—" : string.Join(", ", gaps))} " +

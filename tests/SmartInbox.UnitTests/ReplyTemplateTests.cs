@@ -55,7 +55,7 @@ public class ReplyTemplateTests
     }
 
     [Fact]
-    public async Task LegalNotice_IsFullyFilledInBothLanguages_ExceptOurReference()
+    public async Task LegalNotice_IsFullyFilledInBothLanguages()
     {
         var d = await Draft(Analysis());
 
@@ -73,10 +73,12 @@ public class ReplyTemplateTests
         Assert.Contains("إلى إدارة الشؤون القانونية لاتخاذ الإجراءات اللازمة قبل 4 مارس 2027", d.BodyAr);
         Assert.Contains("مدير إدارة الشؤون القانونية", d.BodyAr);
 
-        // Only our own outgoing number is unknown (the register isn't built yet).
-        Assert.Equal(["Our outgoing reference number"], d.MissingInfo);
-        Assert.Equal(1, ReplyDraftRules.CountPlaceholders(d.BodyEn));
-        Assert.Equal(1, ReplyDraftRules.CountPlaceholders(d.BodyAr));
+        // Our own outgoing number comes from the register on approval: a marker, not a gap.
+        Assert.Empty(d.MissingInfo);
+        Assert.Equal(0, ReplyDraftRules.CountPlaceholders(d.BodyEn));
+        Assert.Equal(0, ReplyDraftRules.CountPlaceholders(d.BodyAr));
+        Assert.Contains(ReplyDraftRules.NumberMarkerEn, d.BodyEn);
+        Assert.Contains(ReplyDraftRules.NumberMarkerAr, d.BodyAr);
         Assert.Equal(["The department will act before the deadline stated"], d.Commitments);
     }
 
@@ -230,12 +232,12 @@ public class ReplyDraftGeneratorTests
         Assert.Equal("Templates", d.Engine);
         Assert.Contains("2027/118", d.SubjectEn);
         Assert.Contains("الشؤون القانونية", d.BodyAr);
-        Assert.Equal(["Our outgoing reference number"], ReplyDraftRules.FromJson(d.MissingInfo));
-        Assert.Contains(_db.DocumentEvents, e => e.Type == DocumentEventType.DraftReady && e.Actor == "Templates" && e.Note!.Contains("1 item(s) to fill in"));
+        Assert.Empty(ReplyDraftRules.FromJson(d.MissingInfo));
+        Assert.Contains(_db.DocumentEvents, e => e.Type == DocumentEventType.DraftReady && e.Actor == "Templates" && !e.Note!.Contains("to fill in"));
     }
 
     [Fact]
-    public async Task Generate_ThenFillTheGap_ThenApprove()
+    public async Task Generate_ThenApprove_NothingToFillIn()
     {
         var doc = await RoutedDocumentAsync();
         var draft = (await RequestAsync(doc)).Draft!;
@@ -243,10 +245,7 @@ public class ReplyDraftGeneratorTests
         var ready = _db.ReplyDrafts.Single();
         var service = new ReplyDraftService(_db, Clerk, new DraftingOptions(), _queue, new RecordingNotifier());
 
-        var edited = await service.UpdateAsync(ready.Id, new UpdateDraftRequest(
-            ready.SubjectEn!, ready.BodyEn!.Replace("[●]", "MDS/OUT/2026/0042"),
-            ready.SubjectAr!, ready.BodyAr!.Replace("[●]", "MDS/OUT/2026/0042")), default);
-        var approved = await service.ApproveAsync(edited.Draft!.Id, default);
+        var approved = await service.ApproveAsync(ready.Id, default);
 
         Assert.Equal(ReplyDraftService.Outcome.Ok, approved.Outcome);
         Assert.Equal(ReplyDraftStatus.Approved, approved.Draft!.Status);

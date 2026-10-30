@@ -12,7 +12,7 @@ export const STATUSES: DocumentStatus[] = ['Processing', 'Analyzed', 'NeedsRevie
 export interface DocumentEvent {
   type:
     | 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated' | 'Assigned'
-    | 'DraftRequested' | 'DraftReady' | 'DraftFailed' | 'DraftEdited' | 'DraftApproved' | 'DraftRejected'
+    | 'DraftRequested' | 'DraftReady' | 'DraftFailed' | 'DraftEdited' | 'DraftApproved' | 'DraftRejected' | 'OutgoingIssued'
   actor: string | null
   departmentId: number | null
   note: string | null

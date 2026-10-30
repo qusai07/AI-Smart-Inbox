@@ -17,6 +17,15 @@ public static class ReplyDraftRules
 {
     /// <summary>Marks something a person must still write. Approval is blocked while any remain.</summary>
     public const string Placeholder = "[●]";
+    /// <summary>Stands where our outgoing number goes; replaced by the register when the draft is approved.</summary>
+    public const string NumberMarkerEn = "(issued on approval)";
+    public const string NumberMarkerAr = "(يصدر عند الاعتماد)";
+
+    public static bool HasNumberMarker(params string?[] texts) =>
+        texts.Any(t => t is not null && (t.Contains(NumberMarkerEn) || t.Contains(NumberMarkerAr)));
+
+    public static string? WithNumber(string? text, string number) =>
+        text?.Replace(NumberMarkerEn, number).Replace(NumberMarkerAr, number);
     public const int MaxInstructions = 1000;
     public const int MaxSubject = 300;
     public const int MaxBody = 20_000;
@@ -40,14 +49,16 @@ public record ReplyDraftDto(
     Guid Id, Guid DocumentId, int Version, bool IsLatest, ReplyDraftStatus Status, string? TemplateKey, string? Engine,
     string? Instructions, string? SubjectEn, string? BodyEn, string? SubjectAr, string? BodyAr,
     IReadOnlyList<string> MissingInfo, IReadOnlyList<string> Commitments, int Placeholders,
-    string? RequestedBy, DateTime CreatedAt, string? EditedBy, DateTime? EditedAt, string? DecidedBy, DateTime? DecidedAt, string? Error)
+    string? RequestedBy, DateTime CreatedAt, string? EditedBy, DateTime? EditedAt, string? DecidedBy, DateTime? DecidedAt, string? Error,
+    string? OutgoingNumber = null, Guid? OutgoingLetterId = null)
 {
-    public static ReplyDraftDto From(ReplyDraft d, bool isLatest) => new(
+    public static ReplyDraftDto From(ReplyDraft d, bool isLatest, OutgoingLetter? outgoing = null) => new(
         d.Id, d.DocumentId, d.Version, isLatest, d.Status, d.TemplateKey, d.Engine, d.Instructions,
         d.SubjectEn, d.BodyEn, d.SubjectAr, d.BodyAr,
         ReplyDraftRules.FromJson(d.MissingInfo), ReplyDraftRules.FromJson(d.Commitments),
         ReplyDraftRules.CountPlaceholders(d.SubjectEn, d.BodyEn, d.SubjectAr, d.BodyAr),
-        d.RequestedBy, d.CreatedAt, d.EditedBy, d.EditedAt, d.DecidedBy, d.DecidedAt, d.Error);
+        d.RequestedBy, d.CreatedAt, d.EditedBy, d.EditedAt, d.DecidedBy, d.DecidedAt, d.Error,
+        outgoing?.Number, outgoing?.Id);
 }
 
 public class RequestDraftRequestValidator : AbstractValidator<RequestDraftRequest>
@@ -96,7 +107,7 @@ public interface IDraftQueue
 /// </summary>
 public class ReplyDraftService(
     IAppDbContext db, ICurrentUser user, DraftingOptions options, IDraftQueue queue, IInboxNotifier notifier,
-    ReplyTemplateCatalog? templates = null, IWebhookPublisher? webhooks = null)
+    ReplyTemplateCatalog? templates = null, IWebhookPublisher? webhooks = null, RegisterService? register = null)
 {
     private readonly ReplyTemplateCatalog _templates = templates ?? new ReplyTemplateCatalog();
 
@@ -134,13 +145,17 @@ public class ReplyDraftService(
     {
         if (!await db.Documents.VisibleTo(user).AnyAsync(d => d.Id == documentId, ct)) return null;
         var drafts = await db.ReplyDrafts.AsNoTracking().Where(d => d.DocumentId == documentId).OrderByDescending(d => d.Version).ToListAsync(ct);
-        return drafts.Select((d, i) => ReplyDraftDto.From(d, i == 0)).ToList();
+        var ids = drafts.Select(d => d.Id).ToList();
+        var numbers = await db.OutgoingLetters.AsNoTracking().Where(l => l.ReplyDraftId != null && ids.Contains(l.ReplyDraftId.Value)).ToListAsync(ct);
+        return drafts.Select((d, i) => ReplyDraftDto.From(d, i == 0, numbers.FirstOrDefault(n => n.ReplyDraftId == d.Id))).ToList();
     }
 
     public async Task<ReplyDraftDto?> GetAsync(Guid draftId, CancellationToken ct)
     {
         var (draft, _) = await LoadAsync(draftId, ct);
-        return draft is null ? null : ReplyDraftDto.From(draft, await IsLatestAsync(draft, ct));
+        if (draft is null) return null;
+        var outgoing = await db.OutgoingLetters.AsNoTracking().FirstOrDefaultAsync(l => l.ReplyDraftId == draft.Id, ct);
+        return ReplyDraftDto.From(draft, await IsLatestAsync(draft, ct), outgoing);
     }
 
     /// <summary>A person's edit becomes a new version; the version it was based on stays as it was.</summary>
@@ -177,7 +192,29 @@ public class ReplyDraftService(
             || new[] { draft.SubjectEn, draft.BodyEn, draft.SubjectAr, draft.BodyAr }.Any(string.IsNullOrWhiteSpace))
             return new(Outcome.Incomplete, ReplyDraftDto.From(draft, true));
 
-        return await DecideAsync(draft, doc, ReplyDraftStatus.Approved, DocumentEventType.DraftApproved, $"version {draft.Version}", ct);
+        if (register is null || !ReplyDraftRules.HasNumberMarker(draft.SubjectEn, draft.BodyEn, draft.SubjectAr, draft.BodyAr))
+            return await DecideAsync(draft, doc, ReplyDraftStatus.Approved, DocumentEventType.DraftApproved, $"version {draft.Version}", ct);
+
+        // Approval and the outgoing number in one save: the register writes the number into the letter and retries
+        // the number (only) if someone else took it at the same moment.
+        var original = (draft.SubjectEn, draft.BodyEn, draft.SubjectAr, draft.BodyAr);
+        MarkDecided(draft, doc, ReplyDraftStatus.Approved, DocumentEventType.DraftApproved, $"version {draft.Version}");
+        if (webhooks is not null) await webhooks.PublishDraftAsync(WebhookEvents.DraftApproved, draft, doc, user.Name, ct);
+        var recipient = await db.Analyses.Where(a => a.DocumentId == doc.Id).Select(a => a.Sender).FirstOrDefaultAsync(ct);
+        var issued = await register.IssueAsync(
+            new IssueRequest(doc.AssignedDepartmentId!.Value, recipient ?? doc.FileName, original.SubjectEn, original.SubjectAr, doc.Id),
+            ct, draft.Id, letter =>
+            {
+                draft.SubjectEn = ReplyDraftRules.WithNumber(original.SubjectEn, letter.Number);
+                draft.BodyEn = ReplyDraftRules.WithNumber(original.BodyEn, letter.Number);
+                draft.SubjectAr = ReplyDraftRules.WithNumber(original.SubjectAr, letter.Number);
+                draft.BodyAr = ReplyDraftRules.WithNumber(original.BodyAr, letter.Number);
+            });
+        if (issued.Outcome != RegisterService.Outcome.Ok)
+            throw new InvalidOperationException($"No outgoing number could be issued ({issued.Outcome}).");
+        await notifier.DraftChangedAsync(doc.Id, draft.Id, draft.Status, Audience.Of(doc.AssignedDepartmentId), ct);
+        var outgoing = await db.OutgoingLetters.AsNoTracking().FirstAsync(l => l.Id == issued.Letter!.Id, ct);
+        return new(Outcome.Ok, ReplyDraftDto.From(draft, true, outgoing));
     }
 
     /// <summary>Word file of a ready or approved draft. Null when it doesn't exist, isn't visible, or has no text yet.</summary>
@@ -199,12 +236,17 @@ public class ReplyDraftService(
         return await DecideAsync(draft, doc, ReplyDraftStatus.Rejected, DocumentEventType.DraftRejected, Clean(reason), ct);
     }
 
-    private async Task<Result> DecideAsync(ReplyDraft draft, Document doc, ReplyDraftStatus status, DocumentEventType type, string? note, CancellationToken ct)
+    private void MarkDecided(ReplyDraft draft, Document doc, ReplyDraftStatus status, DocumentEventType type, string? note)
     {
         draft.Status = status;
         draft.DecidedBy = user.Name;
         draft.DecidedAt = DateTime.UtcNow;
         AddEvent(doc, type, note);
+    }
+
+    private async Task<Result> DecideAsync(ReplyDraft draft, Document doc, ReplyDraftStatus status, DocumentEventType type, string? note, CancellationToken ct)
+    {
+        MarkDecided(draft, doc, status, type, note);
         if (status == ReplyDraftStatus.Approved && webhooks is not null)
             await webhooks.PublishDraftAsync(WebhookEvents.DraftApproved, draft, doc, user.Name, ct);
         await db.SaveChangesAsync(ct);
