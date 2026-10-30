@@ -29,7 +29,8 @@ public sealed record DocumentSummary(
     Guid Id, string FileName, DocumentStatus Status, DateTime UploadedAt,
     string? SummaryEn, string? SummaryAr, DocumentCategory? Category, Priority? Priority, string? Sender,
     DateOnly? Deadline, int? SuggestedDepartmentId, int? FinalDepartmentId, double? Confidence,
-    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload);
+    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload,
+    bool HasRelated = false, bool PossibleDuplicate = false);
 
 /// <summary>A document with its analysis, routing, handling and timeline.</summary>
 public sealed record DocumentDetail(
@@ -107,6 +108,18 @@ public sealed record ReplyTemplate(string Key, string NameEn, string NameAr, IRe
 /// <summary>New text for a draft, in both languages. Saving it creates a new version.</summary>
 public sealed record ReplyText(string SubjectEn, string BodyEn, string SubjectAr, string BodyAr);
 
+/// <summary>Why two letters are related, strongest first.</summary>
+public enum LinkKind { Duplicate, RepliesToOurLetter, EmailThread, FollowUp }
+
+/// <summary>
+/// A letter related to the one asked about, and why (<see cref="Evidence"/>). <see cref="DocumentId"/> is null when the
+/// letter only quotes one of our outgoing letters that was registered by hand (<see cref="OutgoingNumber"/>).
+/// </summary>
+public sealed record RelatedLetter(
+    long LinkId, LinkKind Kind, string? Evidence, bool Earlier, DateTime LinkedAt,
+    Guid? DocumentId, string? FileName, DateTime? UploadedAt, DocumentStatus? Status, int? DepartmentId, HandlingStatus? Handling, string? Sender,
+    Guid? OutgoingLetterId, string? OutgoingNumber);
+
 public enum OutgoingStatus { Issued, Sent, Cancelled }
 
 public enum SentVia { Email, Post, Hand, Other }
@@ -145,6 +158,8 @@ public sealed record DocumentListQuery
     public bool Mine { get; init; }
     /// <summary>Only documents that came in this way (e.g. <see cref="DocumentSource.Email"/>).</summary>
     public DocumentSource? Source { get; init; }
+    /// <summary>Only letters with related letters (true) or without (false).</summary>
+    public bool? Related { get; init; }
     /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
     public string? Search { get; init; }
     /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>

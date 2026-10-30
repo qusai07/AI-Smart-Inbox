@@ -34,7 +34,7 @@ No DI? `new SmartInboxClient(new SmartInboxClientOptions { BaseUrl = ..., ApiKey
 
 | Area | Methods |
 |---|---|
-| `Documents` | `UploadAsync`, `UploadTextAsync`, `GetAsync`, `ListAsync`, `ListAllAsync` (`IAsyncEnumerable`, pages for you), `DownloadAsync`, `ReanalyzeAsync`, `RouteAsync`, `AcknowledgeAsync`, `CloseAsync`, `ReopenAsync`, `WaitForAnalysisAsync` |
+| `Documents` | `UploadAsync`, `UploadTextAsync`, `GetAsync`, `ListAsync`, `ListAllAsync` (`IAsyncEnumerable`, pages for you), `DownloadAsync`, `ReanalyzeAsync`, `RouteAsync`, `AcknowledgeAsync`, `CloseAsync`, `ReopenAsync`, `WaitForAnalysisAsync`, `RelatedAsync` / `RemoveRelatedAsync` ([related letters](../../docs/THREADS.md)) |
 | `Departments` | `ListAsync`, `GetWorkloadAsync` |
 | `Stats` | `GetAsync` |
 | `Drafts` | `ListTemplatesAsync`, `RequestAsync`, `WaitForDraftAsync`, `GetAsync`, `ListAsync`, `UpdateAsync`, `ApproveAsync` (issues the outgoing number: `draft.OutgoingNumber`), `RejectAsync`, `DownloadDocxAsync` |

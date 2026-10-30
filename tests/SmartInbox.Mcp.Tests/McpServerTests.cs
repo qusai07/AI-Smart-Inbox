@@ -334,6 +334,25 @@ public class McpServerTests(SmartInboxFactory server)
     }
 
     [Fact]
+    public async Task GetDocument_ListsRelatedLetters_WithTheReasonAsData()
+    {
+        var text = $"{CourtNotice}\nInternal tracking {Guid.NewGuid():N}";
+        var (desk, first) = await AnalyzedDocumentAsync(text);
+        var again = await desk.Documents.UploadTextAsync(text);
+        await desk.Documents.WaitForAnalysisAsync(again.Id, TimeSpan.FromSeconds(30));
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        await using var mcp = await McpHarness.StdioAsync(server, key);
+
+        var doc = await mcp.JsonAsync("get_document", new { documentId = again.Id });
+
+        var related = Assert.Single(doc.GetProperty("related").EnumerateArray());
+        Assert.Equal("Duplicate", related.GetProperty("kind").GetString());
+        Assert.Equal(first, related.GetProperty("documentId").GetGuid());
+        Assert.Equal("Same file", related.GetProperty("fromDocument").GetProperty("reason").GetString());
+        Assert.False(related.TryGetProperty("evidence", out _)); // only under fromDocument
+    }
+
+    [Fact]
     public async Task DraftReply_ForAnUnroutedDocument_ExplainsWhy()
     {
         var (_, id) = await AnalyzedDocumentAsync();

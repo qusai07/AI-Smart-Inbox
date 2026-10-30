@@ -103,6 +103,11 @@ public static class WebhookVerifier
                 "deadline.approaching" => Document<DeadlineApproachingEvent>(envelope),
                 "draft.ready" => Draft<DraftReadyEvent>(envelope),
                 "draft.approved" => Draft<DraftApprovedEvent>(envelope),
+                "document.linked" => new DocumentLinkedEvent
+                {
+                    Id = envelope.Id, Type = envelope.Type, CreatedAt = envelope.CreatedAt, ApiVersion = envelope.ApiVersion ?? "",
+                    Data = envelope.Data.Deserialize<LinkEventData>(SmartInboxClient.Json) ?? throw new JsonException("data is null"),
+                },
                 "register.issued" => new RegisterIssuedEvent
                 {
                     Id = envelope.Id, Type = envelope.Type, CreatedAt = envelope.CreatedAt, ApiVersion = envelope.ApiVersion ?? "",

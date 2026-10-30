@@ -83,6 +83,7 @@ flowchart LR
 | **Email notifications** | Routing, "closed" report-back, daily deadline digest, and escalation of overdue items to the department head; transactional outbox with retries; local test mail server |
 | **Shared mailbox** | New emails and their letters are imported automatically over IMAP (free), never twice, then analysed and routed like uploads; the covering email stays with each letter ([docs/MAILBOX.md](docs/MAILBOX.md)) |
 | **Reply drafts (EN + AR)** | Formal reply letters from human-written bilingual templates, filled from the analysis; unknown facts stay `[●]` until a person fills them and approves; Word export. Free, no AI ([docs/DRAFTING.md](docs/DRAFTING.md)) |
+| **Related letters** | Spots the same letter received twice, follow-ups in the same case (same reference and sender), replies to our letters and email conversations; explains each link, warns about duplicates and suggests the department that already has the case. Free, no AI ([docs/THREADS.md](docs/THREADS.md)) |
 | **Outgoing register** | Official outgoing numbers (`MDS/OUT/2026/0042`), issued automatically when a reply is approved and written into both letters; search, CSV export, sent/cancelled tracking. Unique and gap-free under concurrency ([docs/REGISTER.md](docs/REGISTER.md)) |
 | **Activity timeline** | Append-only history of every step, with who did it and when |
 | **Sign-in** | Local accounts (ASP.NET Core Identity) and Microsoft Entra ID; three roles enforced by the API |
@@ -277,7 +278,7 @@ flowchart LR
 ```
 
 - **API keys** (*Administration → API keys*): `Authorization: Bearer sik_…`. A key has a role (Admin, Clerk or Department, plus a department), so it gets exactly the same permissions as a person with that role. The key is shown once; only its SHA-256 hash is stored. Actions appear on the timeline as `API key: <name>`.
-- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened`, `deadline.approaching`, `draft.ready`, `draft.approved` and `register.issued`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
+- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened`, `deadline.approaching`, `draft.ready`, `draft.approved`, `register.issued` and `document.linked`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
 - **MCP server for Claude** ([docs/MCP.md](docs/MCP.md)): `smartinbox-mcp` lets Claude Desktop or Claude Code find what needs attention, explain letters in English and Arabic, search the outgoing register, and route or close them. It uses your API key's permissions, is read-only unless you enable writes, and treats letter text as untrusted input (prompt-injection aware).
 - **.NET SDK** ([`sdk/dotnet`](sdk/dotnet)): `SmartInbox.Client` (typed client, paging, typed errors, safe retries, `WebhookVerifier`) and `SmartInbox.Client.AspNetCore` (`MapSmartInboxWebhooks`). Samples in [`sdk/samples`](sdk/samples).
 
@@ -300,13 +301,14 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 | `POST` | `/api/auth/login` · `/logout` | – | Local sign-in / sign-out |
 | `GET` | `/api/auth/me` · `/providers` · `/entra` | – | Current user · enabled sign-in methods · start Microsoft sign-in |
 | `POST` | `/api/documents` | Desk | Multipart `file` or form field `text` |
-| `GET` | `/api/documents?status=&handling=&priority=&department=&assigned=&q=&page=` | Member | List / filter / search (department users: own department only) |
+| `GET` | `/api/documents?status=&handling=&priority=&department=&assigned=&source=&related=&q=&page=` | Member | List / filter / search (department users: own department only) |
 | `GET` | `/api/documents/{id}` | Member | Document, analysis, action items, routing, handling, emails, timeline |
 | `GET` | `/api/documents/{id}/file` | Member | Original file |
 | `POST` | `/api/documents/{id}/reanalyze` · `/route` | Desk | Re-run the AI · accept or override `{ departmentId, note }` |
 | `POST` | `/api/documents/{id}/acknowledge` · `/close` · `/reopen` | Member | Department handling (`close` takes `{ note }`) |
 | `POST` | `/api/documents/{id}/assign` | Member | `{ userId }`: staff of the document's department; `null` unassigns |
 | `POST` | `/api/documents/{id}/comments` | Member | `{ text }`: internal comment (max 2000 chars) |
+| `GET` `DELETE` | `/api/documents/{id}/related` · `/related/{linkId}` | Member | Related letters with the reason · remove a wrong link ([docs/THREADS.md](docs/THREADS.md)) |
 | `GET` | `/api/departments/{id}/members` | Member | Staff who can be assigned (own department only for department users) |
 | `GET` | `/api/departments` · `/workload` | Member | Departments · New/In progress/Closed/Overdue counts |
 | `PUT` | `/api/departments/{id}/contacts` | Admin | `{ email, headEmail }` for notifications, digests and escalations |
@@ -341,7 +343,7 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 - [ ] **Chat with a document**, answering with quoted citations from the source.
 - [ ] **Learn from corrections.** Use clerk overrides to suggest new rule-engine keywords, or as few-shot examples for the LLM.
 - [ ] **Offline OCR** (Tesseract) so scans can be read without a cloud model.
-- [ ] **Duplicate and thread detection.** Link letters that share a reference number to the existing case.
+- [x] **Duplicate and thread detection.** Same letter twice, follow-ups, replies to our letters and email threads, linked with the reason ([docs/THREADS.md](docs/THREADS.md)).
 - [ ] **Semantic search** over documents (embeddings).
 
 ### Integrations

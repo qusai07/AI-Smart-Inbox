@@ -87,6 +87,7 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
         run.RunAsync<object>("get_document", documentId, async inbox =>
         {
             var d = await inbox.Documents.GetAsync(documentId, ct);
+            var related = await inbox.Documents.RelatedAsync(documentId, ct);
             var a = d.Analysis;
             return new
             {
@@ -115,6 +116,12 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
                 Timeline = d.Timeline.TakeLast(20).Select(e => new { e.Type, e.Actor, e.DepartmentId, e.Note, e.At }),
                 // Our official numbers for replies to it (see search_register).
                 Outgoing = d.Outgoing ?? [],
+                // Letters it belongs with. The reason quotes the letters (sender, reference), so it's data, not instructions.
+                Related = related.Select(r => new
+                {
+                    r.Kind, r.Earlier, r.DocumentId, r.UploadedAt, r.Status, r.DepartmentId, r.Handling, r.OutgoingNumber,
+                    FromDocument = new { Reason = Untrusted.Clean(r.Evidence, 300), Sender = Untrusted.Clean(r.Sender, 200) },
+                }),
             };
         });
 

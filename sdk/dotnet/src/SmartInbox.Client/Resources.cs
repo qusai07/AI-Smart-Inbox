@@ -92,6 +92,18 @@ public sealed class DocumentsClient
         _client.SendAsync(HttpMethod.Post, Routes.DocumentAction(id, "assign"), new { userId }, ct);
 
     /// <summary>
+    /// Letters this one belongs with — the same letter received before, a follow-up in the same case, a reply to one of
+    /// our letters, the next email in a conversation — each with the reason. Only letters the key may see.
+    /// </summary>
+    public Task<IReadOnlyList<RelatedLetter>> RelatedAsync(Guid id, CancellationToken ct = default) =>
+        _client.GetAsync<IReadOnlyList<RelatedLetter>>(Routes.DocumentRelated(id), ct);
+
+    /// <summary>Removes a wrong link (<see cref="RelatedLetter.LinkId"/>). It won't be found again.</summary>
+    /// <exception cref="SmartInboxNotFoundException">No such link on this document (or it was already removed).</exception>
+    public Task RemoveRelatedAsync(Guid id, long linkId, CancellationToken ct = default) =>
+        _client.SendAsync(HttpMethod.Delete, Routes.DocumentRelatedLink(id, linkId), null, ct);
+
+    /// <summary>
     /// Polls until analysis has finished (Analyzed, NeedsReview, Failed or Routed) and returns the document.
     /// For event-driven code, subscribe to the <c>document.analyzed</c> webhook instead.
     /// </summary>
@@ -126,6 +138,7 @@ public sealed class DocumentsClient
         Add("handling", q.Handling);
         Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
         Add("source", q.Source);
+        Add("related", q.Related?.ToString().ToLowerInvariant());
         if (q.Mine) Add("mine", "true");
         Add("page", q.Page);
         Add("pageSize", q.PageSize);

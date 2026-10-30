@@ -215,6 +215,7 @@ public class ClientTests(SmartInboxFactory server)
     [InlineData(typeof(SourceEmail), "SourceEmailDto")]
     [InlineData(typeof(OutgoingLetter), "OutgoingLetterDto")]
     [InlineData(typeof(OutgoingRef), "OutgoingRefDto")]
+    [InlineData(typeof(RelatedLetter), "RelatedLetterDto")]
     public async Task Contract_SdkModelsMatchSwaggerSchemas(Type sdkType, string schema)
     {
         using var http = server.CreateClient();

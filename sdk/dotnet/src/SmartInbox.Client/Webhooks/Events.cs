@@ -87,6 +87,21 @@ public sealed record DraftReadyEvent : DraftEvent;
 /// <summary><c>draft.approved</c>: a person approved a reply; it's ready to be sent by the usual channel.</summary>
 public sealed record DraftApprovedEvent : DraftEvent;
 
+/// <summary>Two letters found to belong together, without their content: fetch them with <c>Documents.RelatedAsync</c>.</summary>
+/// <param name="DocumentId">The newer letter.</param>
+/// <param name="RelatedDocumentId">The earlier letter; null when it only quotes one of our outgoing letters registered by hand.</param>
+/// <param name="OutgoingLetterId">Our outgoing letter it replies to, if any.</param>
+/// <param name="Kind">Why they belong together.</param>
+/// <param name="Url">Link to the letter in the web app.</param>
+public sealed record LinkEventData(Guid DocumentId, Guid? RelatedDocumentId, Guid? OutgoingLetterId, LinkKind Kind, string? Url);
+
+/// <summary><c>document.linked</c>: a letter was found to belong with another (duplicate, follow-up, reply, email thread).</summary>
+public sealed record DocumentLinkedEvent : SmartInboxEvent
+{
+    /// <summary>The two letters and the kind of link.</summary>
+    public LinkEventData Data { get; init; } = null!;
+}
+
 /// <summary>An outgoing number, without the letter: fetch it with <c>Register.GetAsync(OutgoingLetterId)</c>.</summary>
 /// <param name="OutgoingLetterId">The register entry.</param>
 /// <param name="Number">The official number, e.g. MDS/OUT/2026/0042.</param>
