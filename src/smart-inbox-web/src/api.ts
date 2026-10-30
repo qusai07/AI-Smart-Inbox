@@ -33,6 +33,10 @@ export interface Department {
   keywords: string | null
   email: string | null
   headEmail: string | null
+  signatoryNameEn: string | null
+  signatoryNameAr: string | null
+  signatoryTitleEn: string | null
+  signatoryTitleAr: string | null
 }
 
 export interface DocumentListItem {
@@ -375,6 +379,8 @@ export const api = {
   updateUser: (id: string, body: { displayName: string; role: Role | null; departmentId: number | null; disabled: boolean }) =>
     request<UserRow>(`/api/users/${id}`, json('PUT', body)),
   setPassword: (id: string, password: string) => request<void>(`/api/users/${id}/password`, json('POST', { password })),
+  setDepartmentSignatory: (id: number, body: { nameEn: string | null; nameAr: string | null; titleEn: string | null; titleAr: string | null }) =>
+    request<void>(`/api/departments/${id}/signatory`, json('PUT', body)),
   setDepartmentContacts: (id: number, email: string | null, headEmail: string | null) =>
     request<void>(`/api/departments/${id}/contacts`, json('PUT', { email, headEmail })),
   apiKeys: () => request<ApiKeyRow[]>('/api/api-keys'),
