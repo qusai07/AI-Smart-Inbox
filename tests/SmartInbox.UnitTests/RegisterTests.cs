@@ -292,6 +292,23 @@ public class RegisterTests : IDisposable
     }
 
     [Fact]
+    public async Task DashboardAndListQueries_TranslateOnARealDatabase()
+    {
+        using var db = Db();
+        var draftId = await ReadyDraftAsync(db);
+        var service = new DocumentService(db, new MemoryStorage(), new NullQueue(), new RecordingNotifier(), Clerk);
+
+        var stats = await service.GetStatsAsync(default);
+        var list = await service.ListAsync(new DocumentQuery(AwaitingApproval: true), default);
+        var duplicates = await service.ListAsync(new DocumentQuery(Duplicates: true, Related: false), default);
+
+        Assert.Equal(1, stats.FollowUp!.AwaitingApproval);
+        Assert.Equal(ReplyDraftStatus.Ready, Assert.Single(list.Items).Reply);
+        Assert.Empty(duplicates.Items);
+        Assert.NotEqual(Guid.Empty, draftId);
+    }
+
+    [Fact]
     public void Csv_QuotesEverything_AndDefusesFormulas()
     {
         var letter = new OutgoingLetterDto(Guid.NewGuid(), "MDS/OUT/2026/0001", 2026, 1, 2, "=HYPERLINK(\"http://x\")", "Re: \"notice\"", "بشأن",

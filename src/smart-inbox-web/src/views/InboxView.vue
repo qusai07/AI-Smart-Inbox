@@ -32,7 +32,9 @@ const filter = reactive<DocumentFilter>({
   priority: null,
   department: null,
   source: (route.query.source as DocumentSource) || null,
-  related: route.query.related === 'true' ? true : null,
+  related: route.query.related === 'true' ? true : route.query.related === 'false' ? false : null,
+  duplicates: route.query.duplicates === 'true' || null,
+  awaitingApproval: route.query.awaiting === 'true' || null,
   q: '',
   page: 1,
   pageSize: 20,
@@ -64,8 +66,21 @@ const tabs = computed<Tab[]>(() => {
 const isActive = (tab: Tab) => filter.status === tab.status && (filter.handling ?? null) === tab.handling
 const priorityOptions = computed(() => PRIORITIES.map((p) => ({ label: t(`priority.${p}`), value: p })))
 const departmentOptions = computed(() => departments.items.map((d) => ({ label: departmentName(d.id), value: d.id })))
-const hasFilters = computed(() => !!(filter.status || filter.priority || filter.department || filter.source || filter.related || filter.q))
-const relatedOptions = computed(() => [{ label: t('related.filterLinked'), value: true }, { label: t('related.filterAlone'), value: false }])
+const hasFilters = computed(() =>
+  !!(filter.status || filter.priority || filter.department || filter.source || filter.related != null || filter.duplicates || filter.awaitingApproval || filter.q))
+type RelatedChoice = 'linked' | 'duplicates' | 'alone'
+const relatedOptions = computed(() => [
+  { label: t('related.filterLinked'), value: 'linked' },
+  { label: t('related.filterDuplicates'), value: 'duplicates' },
+  { label: t('related.filterAlone'), value: 'alone' },
+])
+const relatedChoice = computed<RelatedChoice | null>({
+  get: () => (filter.duplicates ? 'duplicates' : filter.related === true ? 'linked' : filter.related === false ? 'alone' : null),
+  set: (v) => {
+    filter.duplicates = v === 'duplicates' || null
+    filter.related = v === 'linked' ? true : v === 'alone' ? false : null
+  },
+})
 const sourceOptions = computed(() => (['Email', 'Upload', 'Api'] as const).map((s) => ({ label: t(`source.${s}`), value: s })))
 const resultLabel = computed(() => (total.value === 1 ? t('inbox.results1') : t('inbox.results', { n: total.value })))
 
@@ -94,9 +109,14 @@ watch(() => [route.query.status, route.query.handling], ([s, h]) => {
   filter.status = (s as DocumentStatus) || null
   filter.handling = (h as HandlingStatus) || null
 })
+// Links from the dashboard and What's new set these; changing tabs keeps them.
+watch(() => route.query.source, (v) => { if (v) filter.source = v as DocumentSource })
+watch(() => route.query.related, (v) => { if (v) filter.related = v === 'true' })
+watch(() => route.query.duplicates, (v) => { if (v) filter.duplicates = true })
+watch(() => route.query.awaiting, (v) => { if (v) filter.awaitingApproval = true })
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(() => [filter.status, filter.handling, filter.priority, filter.department, filter.source, filter.related], () => {
+watch(() => [filter.status, filter.handling, filter.priority, filter.department, filter.source, filter.related, filter.duplicates, filter.awaitingApproval], () => {
   filter.page = 1
   loading.value = true
   load()
@@ -117,7 +137,7 @@ function onPage(e: PageState) {
 }
 
 function clearFilters() {
-  Object.assign(filter, { priority: null, department: null, source: null, related: null, q: '' })
+  Object.assign(filter, { priority: null, department: null, source: null, related: null, duplicates: null, awaitingApproval: null, q: '' })
   setTab({ status: null, handling: null })
 }
 
@@ -184,7 +204,16 @@ onUnmounted(() => {
     <Select v-model="filter.priority" :options="priorityOptions" option-label="label" option-value="value" :placeholder="t('filters.priority')" show-clear class="filter" />
     <Select v-model="filter.department" :options="departmentOptions" option-label="label" option-value="value" :placeholder="t('filters.department')" show-clear class="filter wide" />
     <Select v-model="filter.source" :options="sourceOptions" option-label="label" option-value="value" :placeholder="t('filters.source')" show-clear class="filter" />
-    <Select v-model="filter.related" :options="relatedOptions" option-label="label" option-value="value" :placeholder="t('related.filter')" show-clear class="filter" />
+    <Select v-model="relatedChoice" :options="relatedOptions" option-label="label" option-value="value" :placeholder="t('related.filter')" show-clear class="filter" />
+    <Button
+      :label="t('inbox.toApprove')"
+      icon="pi pi-pen-to-square"
+      size="small"
+      :severity="filter.awaitingApproval ? undefined : 'secondary'"
+      :outlined="!filter.awaitingApproval"
+      :aria-pressed="!!filter.awaitingApproval"
+      @click="filter.awaitingApproval = filter.awaitingApproval ? null : true"
+    />
     <Button v-if="hasFilters" :label="t('actions.clear')" icon="pi pi-filter-slash" severity="secondary" text @click="clearFilters" />
   </div>
 
@@ -237,6 +266,7 @@ onUnmounted(() => {
           <i v-else-if="row.hasRelated" class="pi pi-link faint" :title="t('related.hasRelated')" :aria-label="t('related.hasRelated')" />
           <span v-if="row.priority && row.priority !== 'Normal'" class="pill" :class="`p-${row.priority}`"><span class="dot" />{{ t(`priority.${row.priority}`) }}</span>
           <span v-if="row.category" class="pill neutral">{{ t(`category.${row.category}`) }}</span>
+          <span v-if="row.reply && row.reply !== 'Rejected' && row.reply !== 'Failed'" class="pill" :class="`r-${row.reply}`"><i class="pi pi-pen-to-square" /> {{ t(`reply.row.${row.reply}`) }}</span>
           <span class="grow" />
           <span class="time faint" :title="row.uploadedAt">{{ timeAgo(row.uploadedAt, locale) }}</span>
         </div>

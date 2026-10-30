@@ -196,6 +196,12 @@ h3 {
 .pill.h-Acknowledged { background: var(--ai-soft); color: var(--ai); }
 .pill.h-Closed { background: var(--ok-soft); color: var(--ok); }
 
+/* Latest reply draft on list rows */
+.pill.r-Ready { background: var(--brand-soft); color: var(--brand); }
+.pill.r-Approved { background: var(--ok-soft); color: var(--ok); }
+.pill.r-Requested,
+.pill.r-Generating { background: var(--ai-soft); color: var(--ai); }
+
 .pill.neutral {
   background: var(--surface-2);
   color: var(--muted);

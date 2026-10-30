@@ -30,7 +30,7 @@ public sealed record DocumentSummary(
     string? SummaryEn, string? SummaryAr, DocumentCategory? Category, Priority? Priority, string? Sender,
     DateOnly? Deadline, int? SuggestedDepartmentId, int? FinalDepartmentId, double? Confidence,
     HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload,
-    bool HasRelated = false, bool PossibleDuplicate = false);
+    bool HasRelated = false, bool PossibleDuplicate = false, DraftStatus? Reply = null);
 
 /// <summary>A document with its analysis, routing, handling and timeline.</summary>
 public sealed record DocumentDetail(
@@ -75,7 +75,10 @@ public sealed record Stats(
     int TotalDocuments, int NeedsReview, int Routed, int Failed, int Decisions, int AcceptedSuggestions,
     double? RoutingAccuracy, double? AverageConfidence, long TotalTokens,
     IReadOnlyList<CountByKey> ByStatus, IReadOnlyList<CountByKey> ByPriority,
-    IReadOnlyList<CountByKey> ByCategory, IReadOnlyList<CountByKey> ByDepartment);
+    IReadOnlyList<CountByKey> ByCategory, IReadOnlyList<CountByKey> ByDepartment, FollowUp? FollowUp = null);
+
+/// <summary>Work waiting on a person.</summary>
+public sealed record FollowUp(int AwaitingApproval, int PossibleDuplicates, int OutgoingNotSent, int OutgoingThisYear, int MailFailed);
 
 /// <summary>One page of results.</summary>
 public sealed record Page<T>(IReadOnlyList<T> Items, int Total, [property: JsonPropertyName("page")] int PageNumber, int PageSize)
@@ -160,6 +163,10 @@ public sealed record DocumentListQuery
     public DocumentSource? Source { get; init; }
     /// <summary>Only letters with related letters (true) or without (false).</summary>
     public bool? Related { get; init; }
+    /// <summary>Only letters received again (the later copy of a duplicate).</summary>
+    public bool Duplicates { get; init; }
+    /// <summary>Only letters whose latest reply draft is ready to approve.</summary>
+    public bool AwaitingApproval { get; init; }
     /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
     public string? Search { get; init; }
     /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>

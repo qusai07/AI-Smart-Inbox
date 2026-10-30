@@ -20,9 +20,9 @@ const departments = useDepartments()
 const stats = useStats()
 const auth = useAuth()
 
-type TabKey = HandlingStatus | 'All' | 'Mine'
+type TabKey = HandlingStatus | 'All' | 'Mine' | 'ToApprove'
 const tab = ref<TabKey>('New')
-const handling = computed<HandlingStatus | null>(() => (tab.value === 'All' || tab.value === 'Mine' ? null : tab.value))
+const handling = computed<HandlingStatus | null>(() => (tab.value === 'All' || tab.value === 'Mine' || tab.value === 'ToApprove' ? null : tab.value))
 const page = ref(1)
 const pageSize = 20
 const rows = ref<DocumentListItem[]>([])
@@ -41,13 +41,15 @@ const tabs = computed(() => [
   { value: 'Acknowledged' as TabKey, label: t('handling.Acknowledged'), count: workload.value.acknowledged },
   { value: 'Closed' as TabKey, label: t('handling.Closed'), count: workload.value.closed },
   { value: 'All' as TabKey, label: t('handling.all'), count: workload.value.new + workload.value.acknowledged + workload.value.closed },
+  { value: 'ToApprove' as TabKey, label: t('inbox.toApprove'), count: undefined as number | undefined },
 ])
 
 async function load() {
   error.value = null
   try {
     const result = await api.list({
-      assigned: props.departmentId, handling: handling.value, mine: tab.value === 'Mine' || null, page: page.value, pageSize,
+      assigned: props.departmentId, handling: handling.value, mine: tab.value === 'Mine' || null,
+      awaitingApproval: tab.value === 'ToApprove' || null, page: page.value, pageSize,
     })
     rows.value = result.items
     total.value = result.total
@@ -115,6 +117,7 @@ onUnmounted(() => {
       @click="setTab(t2.value)"
     >
       <i v-if="t2.value === 'Mine'" class="pi pi-user" />
+      <i v-else-if="t2.value === 'ToApprove'" class="pi pi-pen-to-square" />
       {{ t2.label }}
       <span v-if="t2.count" class="tab-count">{{ t2.count }}</span>
     </button>
@@ -149,6 +152,7 @@ onUnmounted(() => {
         <i v-else-if="row.hasRelated" class="pi pi-link faint" :title="t('related.hasRelated')" :aria-label="t('related.hasRelated')" />
         <span v-if="row.priority && row.priority !== 'Normal'" class="pill" :class="`p-${row.priority}`"><span class="dot" />{{ t(`priority.${row.priority}`) }}</span>
         <span v-if="row.category" class="pill neutral">{{ t(`category.${row.category}`) }}</span>
+        <span v-if="row.reply && row.reply !== 'Rejected' && row.reply !== 'Failed'" class="pill" :class="`r-${row.reply}`"><i class="pi pi-pen-to-square" /> {{ t(`reply.row.${row.reply}`) }}</span>
         <span v-if="row.handling && handling === null" class="pill" :class="`h-${row.handling}`">{{ t(`handling.${row.handling}`) }}</span>
         <span class="grow" />
         <span class="time faint">{{ timeAgo(row.uploadedAt, locale) }}</span>

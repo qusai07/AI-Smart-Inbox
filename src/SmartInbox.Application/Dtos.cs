@@ -21,7 +21,9 @@ public record DocumentListItemDto(
     string? AssigneeName,
     DocumentSource Source = DocumentSource.Upload,
     bool HasRelated = false,
-    bool PossibleDuplicate = false);
+    bool PossibleDuplicate = false,
+    /// <summary>Status of the latest reply draft, if any.</summary>
+    ReplyDraftStatus? Reply = null);
 
 public record DocumentDetailDto(
     Guid Id,
@@ -116,7 +118,11 @@ public record DocumentQuery(
     int Page = 1,
     int PageSize = 20,
     /// <summary>Only letters with related letters (true) or without (false).</summary>
-    bool? Related = null);
+    bool? Related = null,
+    /// <summary>Only letters received again (the later copy of a duplicate).</summary>
+    bool Duplicates = false,
+    /// <summary>Only letters whose latest reply draft is ready for a person to approve.</summary>
+    bool AwaitingApproval = false);
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
@@ -135,4 +141,8 @@ public record StatsDto(
     IReadOnlyList<CountByKey> ByStatus,
     IReadOnlyList<CountByKey> ByPriority,
     IReadOnlyList<CountByKey> ByCategory,
-    IReadOnlyList<CountByKey> ByDepartment);
+    IReadOnlyList<CountByKey> ByDepartment,
+    FollowUpDto? FollowUp = null);
+
+/// <summary>Work waiting on a person, for the dashboard.</summary>
+public record FollowUpDto(int AwaitingApproval, int PossibleDuplicates, int OutgoingNotSent, int OutgoingThisYear, int MailFailed);

@@ -9,7 +9,7 @@ const en = {
   },
   inbox: {
     title: 'Inbox', subtitle: 'AI reads every document and suggests where it should go. You decide.',
-    all: 'All', results: '{n} documents', results1: '1 document', waiting: 'Waiting for department',
+    all: 'All', results: '{n} documents', results1: '1 document', waiting: 'Waiting for department', toApprove: 'Replies to approve',
   },
   timeline: {
     title: 'Activity', system: 'System',
@@ -54,16 +54,16 @@ const en = {
     textPlaceholder: 'Paste the letter or email text here…', success: 'Uploaded. AI analysis has started.', change: 'Choose a different file',
   },
   detail: {
-    original: 'Original document', aiAnalysis: 'AI analysis', summary: 'Summary', fields: 'Key details',
+    summary: 'Summary', fields: 'Key details',
     sender: 'Sender', recipient: 'Recipient', reference: 'Reference', date: 'Dated', deadline: 'Deadline',
     language: 'Language', actionItems: 'Action items', noActionItems: 'No action required.',
-    suggestion: 'Suggested department', confidence: 'confidence', reasoning: 'Why this department',
+    suggestion: 'Suggested department', 
     lowConfidence: 'The AI is unsure about this one. Please choose the department.',
-    noSuggestion: 'The AI could not suggest a department.', routedTo: 'Routed to', repliedWith: 'Replied with', overridden: 'Overrode the AI suggestion',
+    noSuggestion: 'The AI could not suggest a department.', routedTo: 'Routed to', repliedWith: 'Replied with', registerOutgoing: 'Register an outgoing letter for this document', overridden: 'Overrode the AI suggestion',
     acceptedAi: 'Accepted the AI suggestion', note: 'Add a note for the department (optional)', processing: 'Reading the document…',
     processingHint: 'Summaries, key details and a routing suggestion will appear here in a few seconds.',
-    extractedText: 'Text', file: 'File', noPreview: 'No preview available for this file type.', model: 'Analyzed by', tokens: 'tokens',
-    due: 'Due', received: 'Received', decision: 'Routing decision', reroute: 'Change routing', failed: 'Analysis failed',
+    extractedText: 'Text', file: 'File', noPreview: 'No preview available for this file type.', tokens: 'tokens',
+    received: 'Received', reroute: 'Change routing', failed: 'Analysis failed',
   },
   dashboard: {
     title: 'Insights', subtitle: 'How the inbox and the AI are performing.',
@@ -71,6 +71,8 @@ const en = {
     accuracyHint: '{accepted} of {total} suggestions accepted without change', accuracyEmpty: 'Route a few documents to measure accuracy.',
     avgConfidence: 'Average confidence', tokens: 'Tokens used', byPriority: 'By priority', byCategory: 'By category',
     byDepartment: 'Routed by department', byStatus: 'By status', empty: 'No data yet. Upload some documents to get started.',
+    followUp: 'Waiting on someone',
+    fu: { awaitingApproval: 'Replies to approve', possibleDuplicates: 'Possible duplicates', outgoingNotSent: 'Outgoing numbers not marked as sent', outgoingThisYear: 'Outgoing letters this year', mailFailed: 'Emails that failed to import' },
   },
   empty: {
     inboxTitle: 'Your inbox is empty', inbox: 'Upload a letter, scan or email and watch the AI sort it.',
@@ -140,12 +142,12 @@ const en = {
     hooks: {
       title: 'Webhooks', what: 'Smart Inbox calls your systems when something happens.',
       endpoints: '{n} active endpoint(s)', delivered: '{n} delivered in 7 days', manage: 'Manage webhooks',
-      p1: 'Routed, closed, analysed, deadline approaching, reply ready or approved — 10 events.',
+      p1: 'Routed, closed, analysed, deadline approaching, reply ready or approved, outgoing number issued, related letter found — 12 events.',
       p2: 'Signed, retried for ~21 hours, internal addresses blocked, every delivery logged.',
     },
     mcp: {
       title: 'Claude (MCP)', what: 'Work the inbox by chatting with Claude in Claude Code or Claude Desktop.',
-      p1: '"What needs my attention?", "Explain the court notice in Arabic", "Draft a reply".',
+      p1: '"What needs my attention?", "Explain the court notice in Arabic", "Draft a reply", "Did we reply to the court?".',
       p2: 'Uses your API key\'s permissions; read-only unless you allow changes, and Claude asks first.',
       p3: 'Letter text is treated as untrusted, so instructions hidden in a letter are reported, not followed.',
       s1: 'Create an API key above (role Clerk for the desk).',
@@ -153,7 +155,7 @@ const en = {
     },
     sdk: {
       title: '.NET SDK', what: 'A typed C# client for developers building on Smart Inbox.',
-      p1: 'Documents, departments, stats and reply drafts, with paging and clear errors.',
+      p1: 'Documents, departments, stats, reply drafts, the outgoing register and related letters, with paging and clear errors.',
       p2: 'Verifies webhook signatures in one line (MapSmartInboxWebhooks).',
     },
   },
@@ -184,7 +186,7 @@ const en = {
     duplicateText: 'The same letter was received on {when}.', duplicateRouted: ' It was routed to {department}.', duplicateNotRouted: ' It has not been routed yet.',
     openEarlier: 'Open the earlier copy',
     possibleDuplicate: 'Possible duplicate', hasRelated: 'Has related letters',
-    filter: 'Related letters', filterLinked: 'With related letters', filterAlone: 'Without',
+    filter: 'Related letters', filterLinked: 'With related letters', filterDuplicates: 'Possible duplicates', filterAlone: 'Without',
   },
   register: {
     title: 'Outgoing register', subtitle: 'Every letter that leaves the ministry, with its official number.',
@@ -214,7 +216,8 @@ const en = {
     copyEn: 'Copy English', copyAr: 'نسخ العربي', copied: 'Copied', word: 'Download Word', version: 'Version {v}', latest: 'latest',
     viewing: 'You are viewing an older version.', backToLatest: 'Back to latest',
     by: { Templates: 'Template', Edited: 'Edited by {who}' }, requestedBy: 'Requested by {who}', notes: 'Notes',
-    numberOnApproval: 'Our ref is issued on approval', approvedNumber: 'Approved · outgoing number {number}',
+    numberOnApproval: 'Our ref is issued on approval',
+    row: { Ready: 'Reply to approve', Approved: 'Reply approved', Requested: 'Drafting reply', Generating: 'Drafting reply', Rejected: '', Failed: '' }, approvedNumber: 'Approved · outgoing number {number}',
   },
   webhooks: {
     title: 'Webhooks', hint: 'Smart Inbox POSTs a signed event to these URLs when documents change.',
@@ -243,7 +246,7 @@ const ar: typeof en = {
   },
   inbox: {
     title: 'الوارد', subtitle: 'يقرأ الذكاء الاصطناعي كل مستند ويقترح جهة الإحالة، والقرار لك.',
-    all: 'الكل', results: '{n} مستند', results1: 'مستند واحد', waiting: 'بانتظار الإدارة',
+    all: 'الكل', results: '{n} مستند', results1: 'مستند واحد', waiting: 'بانتظار الإدارة', toApprove: 'ردود بانتظار الاعتماد',
   },
   timeline: {
     title: 'سجل النشاط', system: 'النظام',
@@ -288,16 +291,16 @@ const ar: typeof en = {
     textPlaceholder: 'الصق نص الخطاب أو البريد الإلكتروني هنا…', success: 'تم الرفع وبدأ التحليل الذكي.', change: 'اختيار ملف آخر',
   },
   detail: {
-    original: 'المستند الأصلي', aiAnalysis: 'تحليل الذكاء الاصطناعي', summary: 'الملخص', fields: 'البيانات الرئيسية',
+    summary: 'الملخص', fields: 'البيانات الرئيسية',
     sender: 'المرسل', recipient: 'المرسل إليه', reference: 'الرقم المرجعي', date: 'التاريخ', deadline: 'الموعد النهائي',
     language: 'اللغة', actionItems: 'الإجراءات المطلوبة', noActionItems: 'لا توجد إجراءات مطلوبة.',
-    suggestion: 'الإدارة المقترحة', confidence: 'ثقة', reasoning: 'سبب الاقتراح',
+    suggestion: 'الإدارة المقترحة', 
     lowConfidence: 'الذكاء الاصطناعي غير متأكد من هذه المراسلة. يرجى اختيار الإدارة.',
-    noSuggestion: 'لم يتمكن الذكاء الاصطناعي من اقتراح إدارة.', routedTo: 'أُحيلت إلى', repliedWith: 'رُدّ عليه بالصادر رقم', overridden: 'تم تعديل اقتراح الذكاء الاصطناعي',
+    noSuggestion: 'لم يتمكن الذكاء الاصطناعي من اقتراح إدارة.', routedTo: 'أُحيلت إلى', repliedWith: 'رُدّ عليه بالصادر رقم', registerOutgoing: 'تسجيل خطاب صادر لهذا المستند', overridden: 'تم تعديل اقتراح الذكاء الاصطناعي',
     acceptedAi: 'تم اعتماد اقتراح الذكاء الاصطناعي', note: 'أضف ملاحظة للإدارة (اختياري)', processing: 'جارٍ قراءة المستند…',
     processingHint: 'سيظهر الملخص والبيانات الرئيسية والإحالة المقترحة هنا خلال ثوانٍ.',
-    extractedText: 'النص', file: 'الملف', noPreview: 'لا تتوفر معاينة لهذا النوع من الملفات.', model: 'حلّله', tokens: 'رمز',
-    due: 'الاستحقاق', received: 'ورد', decision: 'قرار الإحالة', reroute: 'تغيير الإحالة', failed: 'فشل التحليل',
+    extractedText: 'النص', file: 'الملف', noPreview: 'لا تتوفر معاينة لهذا النوع من الملفات.', tokens: 'رمز',
+    received: 'ورد', reroute: 'تغيير الإحالة', failed: 'فشل التحليل',
   },
   dashboard: {
     title: 'المؤشرات', subtitle: 'أداء صندوق الوارد والذكاء الاصطناعي.',
@@ -305,6 +308,8 @@ const ar: typeof en = {
     accuracyHint: 'اعتُمد {accepted} من {total} اقتراحًا دون تعديل', accuracyEmpty: 'أحِل بعض المستندات لقياس الدقة.',
     avgConfidence: 'متوسط الثقة', tokens: 'الرموز المستخدمة', byPriority: 'حسب الأولوية', byCategory: 'حسب التصنيف',
     byDepartment: 'الإحالات حسب الإدارة', byStatus: 'حسب الحالة', empty: 'لا توجد بيانات بعد. ارفع بعض المستندات للبدء.',
+    followUp: 'بانتظار إجراء',
+    fu: { awaitingApproval: 'ردود بانتظار الاعتماد', possibleDuplicates: 'خطابات قد تكون مكررة', outgoingNotSent: 'أرقام صادرة لم يُسجَّل إرسالها', outgoingThisYear: 'الخطابات الصادرة هذا العام', mailFailed: 'رسائل تعذّر استيرادها' },
   },
   empty: {
     inboxTitle: 'صندوق الوارد فارغ', inbox: 'ارفع خطابًا أو مستندًا ممسوحًا أو بريدًا إلكترونيًا وشاهد الذكاء الاصطناعي يفرزه.',
@@ -374,12 +379,12 @@ const ar: typeof en = {
     hooks: {
       title: 'الويب هوك', what: 'يُبلغ البريد الذكي أنظمتكم فور حدوث أي تغيير.',
       endpoints: '{n} عنوان نشط', delivered: '{n} إرسال خلال 7 أيام', manage: 'إدارة الويب هوك',
-      p1: 'الإحالة، الإغلاق، التحليل، اقتراب الموعد، جاهزية الرد أو اعتماده — 10 أحداث.',
+      p1: 'الإحالة، الإغلاق، التحليل، اقتراب الموعد، جاهزية الرد أو اعتماده، إصدار رقم صادر، العثور على خطاب ذي صلة — 12 حدثاً.',
       p2: 'موقّعة، وتُعاد المحاولة حتى ~21 ساعة، وتُحجب العناوين الداخلية، ويُسجَّل كل إرسال.',
     },
     mcp: {
       title: 'Claude (MCP)', what: 'تعامل مع البريد بالمحادثة مع Claude في Claude Code أو Claude Desktop.',
-      p1: '«ما الذي يحتاج انتباهي؟»، «اشرح إشعار المحكمة بالعربية»، «أعدّ مسودة رد».',
+      p1: '«ما الذي يحتاج انتباهي؟»، «اشرح إشعار المحكمة بالعربية»، «أعدّ مسودة رد»، «هل رددنا على المحكمة؟».',
       p2: 'يعمل بصلاحيات مفتاحك، وللقراءة فقط ما لم تسمح بالتعديل، ويستأذنك Claude أولاً.',
       p3: 'يُعامل نص الخطابات كمحتوى غير موثوق، فتُبلَّغ التعليمات المخفية فيها ولا تُنفَّذ.',
       s1: 'أنشئ مفتاحاً أعلاه (بدور مكتب المراسلات).',
@@ -387,7 +392,7 @@ const ar: typeof en = {
     },
     sdk: {
       title: 'مكتبة .NET', what: 'عميل C# جاهز للمطورين الذين يبنون على البريد الذكي.',
-      p1: 'المراسلات والإدارات والإحصاءات ومسودات الردود، مع التصفح ورسائل خطأ واضحة.',
+      p1: 'المراسلات والإدارات والإحصاءات ومسودات الردود وسجل الصادر والخطابات ذات الصلة، مع التصفح ورسائل خطأ واضحة.',
       p2: 'يتحقق من توقيع الويب هوك بسطر واحد (MapSmartInboxWebhooks).',
     },
   },
@@ -418,7 +423,7 @@ const ar: typeof en = {
     duplicateText: 'ورد الخطاب نفسه في {when}.', duplicateRouted: ' وأُحيل إلى {department}.', duplicateNotRouted: ' ولم يُحَل بعد.',
     openEarlier: 'افتح النسخة السابقة',
     possibleDuplicate: 'قد يكون مكرراً', hasRelated: 'له خطابات ذات صلة',
-    filter: 'الخطابات ذات الصلة', filterLinked: 'لها خطابات ذات صلة', filterAlone: 'بدون',
+    filter: 'الخطابات ذات الصلة', filterLinked: 'لها خطابات ذات صلة', filterDuplicates: 'قد تكون مكررة', filterAlone: 'بدون',
   },
   register: {
     title: 'سجل الصادر', subtitle: 'كل خطاب يصدر عن الوزارة برقمه الرسمي.',
@@ -448,7 +453,8 @@ const ar: typeof en = {
     copyEn: 'Copy English', copyAr: 'نسخ العربي', copied: 'تم النسخ', word: 'تنزيل ملف Word', version: 'النسخة {v}', latest: 'الأحدث',
     viewing: 'أنت تعرض نسخة سابقة.', backToLatest: 'العودة إلى الأحدث',
     by: { Templates: 'قالب', Edited: 'عدّلها {who}' }, requestedBy: 'طلبها {who}', notes: 'ملاحظات',
-    numberOnApproval: 'يصدر رقمنا عند الاعتماد', approvedNumber: 'اعتُمد · رقم الصادر {number}',
+    numberOnApproval: 'يصدر رقمنا عند الاعتماد',
+    row: { Ready: 'رد بانتظار الاعتماد', Approved: 'اعتُمد الرد', Requested: 'جارٍ إعداد الرد', Generating: 'جارٍ إعداد الرد', Rejected: '', Failed: '' }, approvedNumber: 'اعتُمد · رقم الصادر {number}',
   },
   webhooks: {
     title: 'الويب هوك', hint: 'يرسل البريد الذكي حدثًا موقّعًا إلى هذه العناوين عند تغيّر المراسلات.',

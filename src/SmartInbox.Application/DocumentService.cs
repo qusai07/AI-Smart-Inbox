@@ -85,6 +85,11 @@ public class DocumentService(
         if (q.Assigned is { } assigned) query = query.Where(d => d.AssignedDepartmentId == assigned);
         if (q.Handling is { } handling) query = query.Where(d => d.Handling == handling);
         if (q.Source is { } source) query = query.Where(d => d.Source == source);
+        if (q.Duplicates)
+            query = query.Where(d => db.DocumentLinks.Any(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate && l.DocumentId == d.Id));
+        if (q.AwaitingApproval)
+            query = query.Where(d => db.ReplyDrafts.Where(r => r.DocumentId == d.Id).OrderByDescending(r => r.Version)
+                .Select(r => (ReplyDraftStatus?)r.Status).FirstOrDefault() == ReplyDraftStatus.Ready);
         if (q.Related is { } related)
             query = query.Where(d => db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)) == related);
         if (q.Mine) query = _user.Id is { } me ? query.Where(d => d.AssigneeId == me) : query.Where(d => false);
@@ -125,7 +130,8 @@ public class DocumentService(
                 d.AssigneeName,
                 d.Source,
                 db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)),
-                db.DocumentLinks.Any(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate && l.DocumentId == d.Id)))
+                db.DocumentLinks.Any(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate && l.DocumentId == d.Id),
+                db.ReplyDrafts.Where(r => r.DocumentId == d.Id).OrderByDescending(r => r.Version).Select(r => (ReplyDraftStatus?)r.Status).FirstOrDefault()))
             .ToListAsync(ct);
 
         return new PagedResult<DocumentListItemDto>(items, total, page, size);
@@ -354,6 +360,15 @@ public class DocumentService(
 
         int CountOf(DocumentStatus s) => byStatus.FirstOrDefault(x => x.Key == s)?.Count ?? 0;
 
+        var followUp = new FollowUpDto(
+            AwaitingApproval: await db.ReplyDrafts.CountAsync(r => r.Status == ReplyDraftStatus.Ready
+                && !db.ReplyDrafts.Any(n => n.DocumentId == r.DocumentId && n.Version > r.Version), ct),
+            PossibleDuplicates: await db.DocumentLinks.Where(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate)
+                .Select(l => l.DocumentId).Distinct().CountAsync(ct),
+            OutgoingNotSent: await db.OutgoingLetters.CountAsync(l => l.Status == OutgoingStatus.Issued, ct),
+            OutgoingThisYear: await db.OutgoingLetters.CountAsync(l => l.Year == DateTime.UtcNow.Year, ct),
+            MailFailed: await db.InboundEmails.CountAsync(e => e.Status == InboundEmailStatus.Failed, ct));
+
         return new StatsDto(
             TotalDocuments: byStatus.Sum(x => x.Count),
             NeedsReview: CountOf(DocumentStatus.NeedsReview),
@@ -369,6 +384,7 @@ public class DocumentService(
             ByCategory: byCategory.OrderByDescending(x => x.Count).Select(x => new CountByKey(x.Key.ToString(), x.Count)).ToList(),
             ByDepartment: decisions.GroupBy(r => r.FinalDepartmentId)
                 .Select(g => new CountByKey(departments.GetValueOrDefault(g.Key, $"#{g.Key}"), g.Count()))
-                .OrderByDescending(x => x.Count).ToList());
+                .OrderByDescending(x => x.Count).ToList(),
+            FollowUp: followUp);
     }
 }

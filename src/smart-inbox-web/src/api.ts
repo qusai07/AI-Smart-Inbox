@@ -66,6 +66,8 @@ export interface DocumentListItem {
   hasRelated: boolean
   /** The same letter was received before. */
   possibleDuplicate: boolean
+  /** Status of the latest reply draft, if any. */
+  reply: DraftStatus | null
 }
 
 export type LinkKind = 'Duplicate' | 'RepliesToOurLetter' | 'EmailThread' | 'FollowUp'
@@ -191,6 +193,8 @@ export interface Stats {
   byPriority: CountByKey[]
   byCategory: CountByKey[]
   byDepartment: CountByKey[]
+  /** Work waiting on a person. */
+  followUp: { awaitingApproval: number; possibleDuplicates: number; outgoingNotSent: number; outgoingThisYear: number; mailFailed: number } | null
 }
 
 export interface DocumentFilter {
@@ -203,6 +207,8 @@ export interface DocumentFilter {
   q?: string
   source?: DocumentSource | null
   related?: boolean | null
+  duplicates?: boolean | null
+  awaitingApproval?: boolean | null
   page?: number
   pageSize?: number
 }

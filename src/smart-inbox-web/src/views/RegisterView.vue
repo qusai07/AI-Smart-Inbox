@@ -24,7 +24,7 @@ const thisYear = new Date().getFullYear()
 const filter = reactive<RegisterFilter>({
   year: thisYear,
   department: null,
-  status: null,
+  status: (route.query.status as OutgoingStatus) || null,
   q: typeof route.query.q === 'string' ? route.query.q : '',
 })
 const letters = ref<OutgoingLetter[]>([])
@@ -65,6 +65,11 @@ function more() {
   load(false)
 }
 
+// Links (the dashboard, a document, a reply) set these while the page may already be open.
+watch(() => route.query.q, (v) => { if (typeof v === 'string') filter.q = v })
+watch(() => route.query.status, (v) => { if (v) filter.status = v as OutgoingStatus })
+watch(() => route.query.document, (v) => { if (v) openIssue() })
+
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 watch(() => filter.q, () => {
   clearTimeout(searchTimer)
@@ -91,7 +96,7 @@ const issueForm = reactive({ departmentId: null as number | null, recipient: '',
 
 function openIssue() {
   Object.assign(issueForm, {
-    departmentId: auth.isDepartment ? auth.me?.departmentId ?? null : null,
+    departmentId: auth.isDepartment ? auth.me?.departmentId ?? null : Number(route.query.department) || null,
     recipient: '',
     subjectEn: '',
     subjectAr: '',

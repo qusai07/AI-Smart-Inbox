@@ -139,6 +139,8 @@ public sealed class DocumentsClient
         Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
         Add("source", q.Source);
         Add("related", q.Related?.ToString().ToLowerInvariant());
+        if (q.Duplicates) Add("duplicates", "true");
+        if (q.AwaitingApproval) Add("awaitingApproval", "true");
         if (q.Mine) Add("mine", "true");
         Add("page", q.Page);
         Add("pageSize", q.PageSize);

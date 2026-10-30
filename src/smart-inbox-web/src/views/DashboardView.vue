@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import ConfidenceRing from '../components/ConfidenceRing.vue'
 import type { CountByKey } from '../api'
 import { useStats } from '../stores/stats'
+import { useAuth } from '../stores/auth'
+import type { RouteLocationRaw } from 'vue-router'
 
 defineEmits<{ upload: [] }>()
 
@@ -40,6 +42,22 @@ const groups = computed(() => {
   ]
 })
 
+const auth = useAuth()
+
+/** Each tile opens the list it counts. */
+const followUp = computed(() => {
+  const f = stats.value?.followUp
+  if (!f) return []
+  const tiles: { key: string; icon: string; tone: string; value: number; to: RouteLocationRaw }[] = [
+    { key: 'awaitingApproval', icon: 'pi pi-pen-to-square', tone: 'brand', value: f.awaitingApproval, to: { name: 'inbox', query: { awaiting: 'true' } } },
+    { key: 'possibleDuplicates', icon: 'pi pi-exclamation-triangle', tone: 'warn', value: f.possibleDuplicates, to: { name: 'inbox', query: { duplicates: 'true' } } },
+    { key: 'outgoingNotSent', icon: 'pi pi-send', tone: 'ai', value: f.outgoingNotSent, to: { name: 'register', query: { status: 'Issued' } } },
+    { key: 'outgoingThisYear', icon: 'pi pi-hashtag', tone: 'ok', value: f.outgoingThisYear, to: { name: 'register' } },
+  ]
+  if (auth.isAdmin) tiles.push({ key: 'mailFailed', icon: 'pi pi-envelope', tone: f.mailFailed ? 'warn' : 'neutral', value: f.mailFailed, to: { name: 'admin', hash: '#mailbox' } })
+  return tiles
+})
+
 const max = (items: CountByKey[]) => Math.max(1, ...items.map((i) => i.count))
 </script>
 
@@ -73,6 +91,17 @@ const max = (items: CountByKey[]) => Math.max(1, ...items.map((i) => i.count))
         </div>
       </div>
     </div>
+
+    <section v-if="followUp.length" class="follow-up">
+      <h2 class="eyebrow">{{ t('dashboard.followUp') }}</h2>
+      <div class="tiles wide">
+        <RouterLink v-for="tile in followUp" :key="tile.key" :to="tile.to" class="card tile link" :class="{ quiet: !tile.value }">
+          <span class="tile-icon" :class="tile.tone"><i :class="tile.icon" /></span>
+          <span class="tile-value tabular">{{ num(tile.value) }}</span>
+          <span class="tile-label muted">{{ t(`dashboard.fu.${tile.key}`) }}</span>
+        </RouterLink>
+      </div>
+    </section>
 
     <div v-if="stats.totalDocuments === 0" class="card card-pad empty muted">{{ t('dashboard.empty') }}</div>
 
@@ -233,5 +262,26 @@ const max = (items: CountByKey[]) => Math.max(1, ...items.map((i) => i.count))
   .groups {
     grid-template-columns: 1fr;
   }
+}
+.follow-up {
+  margin-bottom: 16px;
+}
+.follow-up h2 {
+  margin: 0 0 8px;
+}
+.tiles.wide {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+a.tile {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+a.tile:hover {
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+a.tile.quiet .tile-value {
+  color: var(--faint);
 }
 </style>

@@ -5,7 +5,8 @@ All notable changes to `SmartInbox.Client` and `SmartInbox.Client.AspNetCore`. T
 ## 0.6.0 — 2026-10-30
 
 - `Documents.RelatedAsync` / `RemoveRelatedAsync`: letters a document belongs with (duplicates, follow-ups, replies to our letters, email threads), each with its reason
-- `DocumentSummary.HasRelated` / `PossibleDuplicate`, `DocumentListQuery.Related`
+- `DocumentSummary.HasRelated` / `PossibleDuplicate` / `Reply` (latest draft status), `DocumentListQuery.Related` / `Duplicates` / `AwaitingApproval`
+- `Stats.FollowUp`: replies to approve, possible duplicates, outgoing numbers not sent, outgoing this year, failed email imports
 - Webhook event `DocumentLinkedEvent` (`document.linked`)
 
 ## 0.5.0 — 2026-10-30

@@ -338,6 +338,40 @@ public class RelatedLetterTests
         Assert.Single((await service.ListAsync(new DocumentQuery(Related: false), default)).Items);
     }
 
+    [Fact]
+    public async Task TheDashboard_CountsWhatWaitsOnSomeone_AndTheListsFilterIt()
+    {
+        var first = Letter(hash: "abc", daysAgo: 1);
+        var again = Letter(hash: "abc");
+        await LinkAsync(again);
+        var replied = Letter();
+        _db.ReplyDrafts.AddRange(
+            new ReplyDraft { DocumentId = replied.Id, Version = 1, Status = ReplyDraftStatus.Rejected },
+            new ReplyDraft { DocumentId = replied.Id, Version = 2, Status = ReplyDraftStatus.Ready },
+            new ReplyDraft { DocumentId = first.Id, Version = 1, Status = ReplyDraftStatus.Ready },
+            new ReplyDraft { DocumentId = first.Id, Version = 2, Status = ReplyDraftStatus.Approved });
+        _db.OutgoingLetters.AddRange(
+            new OutgoingLetter { Number = "MDS/OUT/2026/0001", Year = DateTime.UtcNow.Year, Sequence = 1, DepartmentId = 2 },
+            new OutgoingLetter { Number = "MDS/OUT/2026/0002", Year = DateTime.UtcNow.Year, Sequence = 2, DepartmentId = 2, Status = OutgoingStatus.Sent });
+        _db.InboundEmails.Add(new InboundEmail { MessageId = "<x@y>", Mailbox = "m", Status = InboundEmailStatus.Failed });
+        await _db.SaveChangesAsync();
+        var service = new DocumentService(_db, _storage, new NullQueue(), new RecordingNotifier(), Clerk);
+
+        var f = (await service.GetStatsAsync(default)).FollowUp!;
+
+        Assert.Equal(1, f.AwaitingApproval);       // only the latest version counts
+        Assert.Equal(1, f.PossibleDuplicates);
+        Assert.Equal(1, f.OutgoingNotSent);
+        Assert.Equal(2, f.OutgoingThisYear);
+        Assert.Equal(1, f.MailFailed);
+
+        var toApprove = Assert.Single((await service.ListAsync(new DocumentQuery(AwaitingApproval: true), default)).Items);
+        Assert.Equal(replied.Id, toApprove.Id);
+        Assert.Equal(ReplyDraftStatus.Ready, toApprove.Reply);
+        Assert.Equal(again.Id, Assert.Single((await service.ListAsync(new DocumentQuery(Duplicates: true), default)).Items).Id);
+        Assert.Equal(ReplyDraftStatus.Approved, (await service.ListAsync(new DocumentQuery(), default)).Items.Single(d => d.Id == first.Id).Reply);
+    }
+
     // ── Upload and email ─────────────────────────────────────────────────────
 
     [Fact]

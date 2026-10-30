@@ -361,6 +361,13 @@ watch(() => props.id, load, { immediate: true })
                 <RouterLink :to="{ name: 'register', query: { q: o.number } }" class="ltr num">{{ o.number }}</RouterLink>
                 <span class="faint">· {{ t(`register.status.${o.status}`) }} · {{ formatDateTime(o.issuedAt, locale) }}</span>
               </p>
+              <RouterLink
+                v-if="canAssign"
+                :to="{ name: 'register', query: { document: doc.id, department: String(doc.handling.departmentId) } }"
+                class="small register-link"
+              >
+                <i class="pi pi-hashtag" /> {{ t('detail.registerOutgoing') }}
+              </RouterLink>
             </div>
 
             <!-- AI suggestion -->
@@ -669,6 +676,12 @@ watch(() => props.id, load, { immediate: true })
 }
 
 /* Decision card */
+.register-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
 .replied .num {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 600;
