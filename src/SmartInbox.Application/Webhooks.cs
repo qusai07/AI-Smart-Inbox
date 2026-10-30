@@ -31,6 +31,7 @@ public static class WebhookEvents
     public const string DraftReady = "draft.ready";
     public const string DraftApproved = "draft.approved";
     public const string RegisterIssued = "register.issued";
+    public const string DocumentLinked = "document.linked";
     /// <summary>Sent only by "Send test"; endpoints don't subscribe to it.</summary>
     public const string Ping = "webhook.ping";
 
@@ -39,7 +40,7 @@ public static class WebhookEvents
     public static readonly string[] Subscribable =
     [
         DocumentReceived, DocumentAnalyzed, DocumentAnalysisFailed, DocumentRouted,
-        DocumentAcknowledged, DocumentClosed, DocumentReopened, DeadlineApproaching, DraftReady, DraftApproved, RegisterIssued,
+        DocumentAcknowledged, DocumentClosed, DocumentReopened, DeadlineApproaching, DraftReady, DraftApproved, RegisterIssued, DocumentLinked,
     ];
 }
 
@@ -126,6 +127,9 @@ public record WebhookDocumentData(
     Guid DocumentId, DocumentStatus Status, int? DepartmentId, int? PreviousDepartmentId, int? SuggestedDepartmentId,
     Priority? Priority, DocumentCategory? Category, double? Confidence, HandlingStatus? Handling,
     DateOnly? Deadline, string? Actor, string Url, DocumentSource Source = DocumentSource.Upload);
+
+/// <summary>Two letters were found to belong together. Thin: ids and the kind, not the reason (it quotes the letters).</summary>
+public record WebhookLinkData(Guid DocumentId, Guid? RelatedDocumentId, Guid? OutgoingLetterId, LinkKind Kind, string? Url);
 
 /// <summary>An outgoing number was issued. Thin: the number and links, not the letter.</summary>
 public record WebhookRegisterData(

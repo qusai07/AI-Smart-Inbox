@@ -3,6 +3,7 @@
 //   dotnet run --project tests/SmartInbox.AiEvals -- --provider Rules|Ollama|Claude|Hybrid [--samples <dir>] [--out <file>]
 //   dotnet run --project tests/SmartInbox.AiEvals -- --drafting [--provider Rules]   reply drafting (templates) → docs/EVALS-drafting.md
 //   dotnet run --project tests/SmartInbox.AiEvals -- --mailbox [--provider Rules]    letters by email vs upload → docs/EVALS-mailbox.md
+//   dotnet run --project tests/SmartInbox.AiEvals -- --threads [--provider Rules]    related letters (duplicates, follow-ups, replies) → docs/EVALS-threads.md
 //
 // Rules and Ollama are free. Claude needs Claude:ApiKey (user-secrets of SmartInbox.Api) or ANTHROPIC_API_KEY and costs tokens.
 
@@ -21,10 +22,11 @@ var root = FindRepoRoot();
 var samplesDir = ArgValue("--samples") ?? Path.Combine(root, "samples");
 var drafting = Environment.GetCommandLineArgs().Contains("--drafting");
 var mailboxMode = Environment.GetCommandLineArgs().Contains("--mailbox");
+var threadsMode = Environment.GetCommandLineArgs().Contains("--threads");
 // Drafting is measured on top of the free rule engine unless another engine is asked for.
-var provider = ArgValue("--provider") ?? (drafting || mailboxMode ? "Rules" : null);
+var provider = ArgValue("--provider") ?? (drafting || mailboxMode || threadsMode ? "Rules" : null);
 var outFile = ArgValue("--out") ?? Path.Combine(root, "docs",
-    drafting ? "EVALS-drafting.md" : mailboxMode ? "EVALS-mailbox.md" : provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
+    drafting ? "EVALS-drafting.md" : mailboxMode ? "EVALS-mailbox.md" : threadsMode ? "EVALS-threads.md" : provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
 
 var labels = JsonSerializer.Deserialize<LabelFile>(
     await File.ReadAllTextAsync(Path.Combine(samplesDir, "labels.json")),
@@ -57,6 +59,17 @@ if (mailboxMode)
     Directory.CreateDirectory(Path.GetDirectoryName(outFile)!);
     await File.WriteAllTextAsync(outFile, mailReport);
     Console.WriteLine(mailReport);
+    Console.WriteLine($"Written to {outFile}");
+    return 0;
+}
+
+if (threadsMode)
+{
+    var cases = await ThreadsEval.RunAsync(labels.Documents.Select(d => d.File).ToList(), samplesDir, ai, extractors);
+    var threadsReport = ThreadsEval.Report(cases, model);
+    Directory.CreateDirectory(Path.GetDirectoryName(outFile)!);
+    await File.WriteAllTextAsync(outFile, threadsReport);
+    Console.WriteLine(threadsReport);
     Console.WriteLine($"Written to {outFile}");
     return 0;
 }

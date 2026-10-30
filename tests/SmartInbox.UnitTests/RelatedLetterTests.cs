@@ -204,6 +204,140 @@ public class RelatedLetterTests
         Assert.Empty(await Finder(new ThreadOptions { Enabled = false }).LinkAsync(again.Id, default));
     }
 
+    // ── After analysis ───────────────────────────────────────────────────────
+
+    private static readonly TestUser Clerk = new("Sara", Roles.Clerk);
+    private readonly MemoryStorage _storage = new();
+
+    /// <summary>Uploads and analyses a letter, like the real pipeline (with related-letter matching and webhooks).</summary>
+    private async Task<Document> AnalysedAsync(string text, int department, double confidence, string sender = "Demo City Court", string reference = "2027/118")
+    {
+        var service = new DocumentService(_db, _storage, new NullQueue(), new RecordingNotifier(), Clerk);
+        var doc = await service.UploadTextAsync(text, "Sara", default);
+        var ai = new FakeAi(_ => FakeAi.Result(department, confidence) with { Sender = sender, ReferenceNumber = reference });
+        await new DocumentProcessor(_db, _storage, [new SmartInbox.Infrastructure.TextExtraction.PlainTextExtractor()], ai, new RecordingNotifier(),
+            NullLogger<DocumentProcessor>.Instance, new WebhookPublisher(_db, new NotificationOptions { AppBaseUrl = "http://inbox.test" }),
+            new RelatedLetterFinder(_db, new ThreadOptions(), new RegisterOptions(), TimeProvider.System),
+            new NotificationOptions { AppBaseUrl = "http://inbox.test" }).ProcessAsync(doc.Id, default);
+        return doc;
+    }
+
+    private async Task RouteAsync(Document doc, int department) =>
+        await new DocumentService(_db, _storage, new NullQueue(), new RecordingNotifier(), Clerk).RouteAsync(doc.Id, new RouteRequest(department, null), null, default);
+
+    [Fact]
+    public async Task AFollowUp_WhileTheAiIsUnsure_IsSuggestedToTheDepartmentThatHasTheCase()
+    {
+        _db.WebhookEndpoints.Add(new WebhookEndpoint { Url = "https://hooks.example.com", Secret = "p:x" });
+        var notice = await AnalysedAsync("Hearing notice for case 2027/118.", department: 2, confidence: 0.9);
+        await RouteAsync(notice, 2);
+
+        var reminder = await AnalysedAsync("Reminder: please submit the memorandum.", department: 5, confidence: 0.4);
+
+        var a = reminder.Analysis!;
+        Assert.Equal(2, a.SuggestedDepartmentId);
+        Assert.Equal(DocumentProcessor.CaseConfidence, a.Confidence);
+        Assert.StartsWith("Earlier letters in this case went to Legal Affairs.", a.Reasoning);
+        Assert.Equal(DocumentStatus.Analyzed, reminder.Status); // ready to route, no longer "needs review"
+        Assert.Contains(_db.DocumentEvents, e => e.DocumentId == reminder.Id && e.Type == DocumentEventType.Linked
+                                                 && e.Note == "Same reference 2027/118 from Demo City Court");
+        var hook = Assert.Single(_db.WebhookDeliveries, w => w.EventType == WebhookEvents.DocumentLinked);
+        Assert.Contains("\"kind\":\"FollowUp\"", hook.Payload);
+        Assert.DoesNotContain("Demo City Court", hook.Payload); // thin: no content from the letters
+    }
+
+    [Fact]
+    public async Task AConfidentAnalysis_KeepsItsDepartment_AndMentionsTheCase()
+    {
+        var notice = await AnalysedAsync("Hearing notice for case 2027/118.", department: 2, confidence: 0.9);
+        await RouteAsync(notice, 2);
+
+        var invoice = await AnalysedAsync("Invoice for the court fees.", department: 3, confidence: 0.9);
+
+        Assert.Equal(3, invoice.Analysis!.SuggestedDepartmentId);
+        Assert.EndsWith("Earlier letters in this case went to Legal Affairs.", invoice.Analysis.Reasoning);
+    }
+
+    [Fact]
+    public async Task Reanalysing_DoesNotLinkOrLogTwice()
+    {
+        await AnalysedAsync(LongText, department: 2, confidence: 0.9, reference: "A-1");
+        var again = await AnalysedAsync(LongText, department: 2, confidence: 0.9, reference: "A-1");
+        var processor = new DocumentProcessor(_db, _storage, [new SmartInbox.Infrastructure.TextExtraction.PlainTextExtractor()],
+            new FakeAi(_ => FakeAi.Result(2, 0.9)), new RecordingNotifier(), NullLogger<DocumentProcessor>.Instance,
+            related: new RelatedLetterFinder(_db, new ThreadOptions(), new RegisterOptions(), TimeProvider.System));
+
+        await processor.ProcessAsync(again.Id, default);
+
+        Assert.Equal(LinkKind.Duplicate, Assert.Single(_db.DocumentLinks).Kind);
+        Assert.Single(_db.DocumentEvents, e => e.Type == DocumentEventType.Linked);
+    }
+
+    [Fact]
+    public async Task EarlierLetters_AreBackfilled_OldestFirst_Quietly()
+    {
+        foreach (var daysAgo in new[] { 3, 1 })
+        {
+            var path = await _storage.SaveAsync(new MemoryStream("Same scanned letter"u8.ToArray()), "scan.pdf");
+            _db.Documents.Add(new Document { FileName = "scan.pdf", ContentType = "application/pdf", StoragePath = path, UploadedAt = DateTime.UtcNow.AddDays(-daysAgo) });
+        }
+        _db.Documents.Add(new Document { FileName = "lost.pdf", ContentType = "application/pdf", StoragePath = "missing", UploadedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        var count = await new RelatedLetterBackfill(_db, _storage, new RelatedLetterFinder(_db, new ThreadOptions(), new RegisterOptions(), TimeProvider.System),
+            new ThreadOptions(), TimeProvider.System, NullLogger<RelatedLetterBackfill>.Instance).RunAsync(default, batchSize: 2);
+
+        Assert.Equal(3, count);
+        var link = Assert.Single(_db.DocumentLinks);
+        Assert.Equal(LinkKind.Duplicate, link.Kind);
+        var newer = _db.Documents.Where(d => d.FileName == "scan.pdf").OrderByDescending(d => d.UploadedAt).First();
+        Assert.Equal(newer.Id, link.DocumentId);
+        Assert.Null(_db.Documents.Single(d => d.FileName == "lost.pdf").ContentHash);
+        Assert.Empty(_db.DocumentEvents.Where(e => e.Type == DocumentEventType.Linked));
+    }
+
+    [Fact]
+    public async Task People_SeeOnlyRelatedLettersTheyMaySee_AndCanRemoveAWrongLink()
+    {
+        var legalDoc = Letter(hash: "abc", daysAgo: 2);
+        var hrDoc = Letter(hash: "abc", daysAgo: 1);
+        var mine = Letter(hash: "abc");
+        legalDoc.AssignedDepartmentId = 2;
+        hrDoc.AssignedDepartmentId = 4;
+        mine.AssignedDepartmentId = 2;
+        await _db.SaveChangesAsync();
+        await LinkAsync(mine);
+
+        var legal = new RelatedLetterService(_db, new TestUser("Omar", Roles.Department, DepartmentId: 2));
+        var seen = await legal.ListAsync(mine.Id, default);
+        Assert.Equal(legalDoc.Id, Assert.Single(seen!).DocumentId); // the HR letter isn't shown to Legal
+        Assert.Equal(2, (await new RelatedLetterService(_db, Clerk).ListAsync(mine.Id, default))!.Count);
+        Assert.Null(await legal.ListAsync(hrDoc.Id, default));
+
+        Assert.Equal(RelatedLetterService.RemoveOutcome.Removed, await legal.RemoveAsync(mine.Id, seen![0].LinkId, default));
+        Assert.Empty((await legal.ListAsync(mine.Id, default))!);
+        Assert.Equal(RelatedLetterService.RemoveOutcome.NotFound, await legal.RemoveAsync(mine.Id, seen[0].LinkId, default));
+        Assert.Empty(await Finder().LinkAsync(mine.Id, default)); // stays removed
+        Assert.Contains(_db.DocumentEvents, e => e.DocumentId == mine.Id && e.Note == "Link removed: Same file" && e.Actor == "Omar");
+    }
+
+    [Fact]
+    public async Task TheInbox_FlagsRelatedLetters_AndPossibleDuplicates()
+    {
+        var first = Letter(hash: "abc", daysAgo: 1);
+        var again = Letter(hash: "abc");
+        Letter(hash: "other");
+        await LinkAsync(again);
+        var service = new DocumentService(_db, _storage, new NullQueue(), new RecordingNotifier(), Clerk);
+
+        var related = (await service.ListAsync(new DocumentQuery(Related: true), default)).Items;
+
+        Assert.Equal([again.Id, first.Id], related.Select(d => d.Id));
+        Assert.True(related.Single(d => d.Id == again.Id).PossibleDuplicate);  // the second copy is the suspect
+        Assert.False(related.Single(d => d.Id == first.Id).PossibleDuplicate);
+        Assert.Single((await service.ListAsync(new DocumentQuery(Related: false), default)).Items);
+    }
+
     // ── Upload and email ─────────────────────────────────────────────────────
 
     [Fact]

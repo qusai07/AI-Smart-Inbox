@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<MailboxImporter>();
         services.AddScoped<RegisterService>();
         services.AddScoped<RelatedLetterFinder>();
+        services.AddScoped<RelatedLetterService>();
+        services.AddScoped<RelatedLetterBackfill>();
         services.AddScoped<IValidator<RegisterQuery>, RegisterQueryValidator>();
         services.AddScoped<IValidator<IssueRequest>, IssueRequestValidator>();
         services.AddScoped<IValidator<MarkSentRequest>, MarkSentRequestValidator>();

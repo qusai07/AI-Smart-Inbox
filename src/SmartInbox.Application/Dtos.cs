@@ -19,7 +19,9 @@ public record DocumentListItemDto(
     HandlingStatus? Handling,
     string? AssigneeId,
     string? AssigneeName,
-    DocumentSource Source = DocumentSource.Upload);
+    DocumentSource Source = DocumentSource.Upload,
+    bool HasRelated = false,
+    bool PossibleDuplicate = false);
 
 public record DocumentDetailDto(
     Guid Id,
@@ -112,7 +114,9 @@ public record DocumentQuery(
     string? Q = null,
     DocumentSource? Source = null,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    /// <summary>Only letters with related letters (true) or without (false).</summary>
+    bool? Related = null);
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 

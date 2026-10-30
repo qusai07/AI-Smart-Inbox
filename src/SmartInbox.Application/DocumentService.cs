@@ -85,6 +85,8 @@ public class DocumentService(
         if (q.Assigned is { } assigned) query = query.Where(d => d.AssignedDepartmentId == assigned);
         if (q.Handling is { } handling) query = query.Where(d => d.Handling == handling);
         if (q.Source is { } source) query = query.Where(d => d.Source == source);
+        if (q.Related is { } related)
+            query = query.Where(d => db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)) == related);
         if (q.Mine) query = _user.Id is { } me ? query.Where(d => d.AssigneeId == me) : query.Where(d => false);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
@@ -121,7 +123,9 @@ public class DocumentService(
                 d.Handling,
                 d.AssigneeId,
                 d.AssigneeName,
-                d.Source))
+                d.Source,
+                db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)),
+                db.DocumentLinks.Any(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate && l.DocumentId == d.Id)))
             .ToListAsync(ct);
 
         return new PagedResult<DocumentListItemDto>(items, total, page, size);

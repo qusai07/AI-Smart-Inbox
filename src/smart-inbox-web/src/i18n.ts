@@ -19,7 +19,7 @@ const en = {
     Escalated: 'Overdue: escalated to the head of {dept}',
     Assigned: 'Assigned',
     DraftRequested: 'Reply draft requested', DraftReady: 'Reply draft ready', DraftFailed: 'Reply draft failed',
-    DraftEdited: 'Reply draft edited', DraftApproved: 'Reply approved', DraftRejected: 'Reply draft rejected', OutgoingIssued: 'Outgoing number issued',
+    DraftEdited: 'Reply draft edited', DraftApproved: 'Reply approved', DraftRejected: 'Reply draft rejected', OutgoingIssued: 'Outgoing number issued', Linked: 'Related letter found',
   },
   work: {
     assignee: 'Assigned to', unassigned: 'Unassigned', assignPlaceholder: 'Assign to…', assigned: 'Assigned to {name}',
@@ -241,7 +241,7 @@ const ar: typeof en = {
     Escalated: 'متأخر: صُعّد إلى مدير {dept}',
     Assigned: 'تم الإسناد',
     DraftRequested: 'طُلبت مسودة رد', DraftReady: 'مسودة الرد جاهزة', DraftFailed: 'تعذّر إعداد مسودة الرد',
-    DraftEdited: 'عُدّلت مسودة الرد', DraftApproved: 'اعتُمد الرد', DraftRejected: 'رُفضت مسودة الرد', OutgoingIssued: 'صدر رقم صادر',
+    DraftEdited: 'عُدّلت مسودة الرد', DraftApproved: 'اعتُمد الرد', DraftRejected: 'رُفضت مسودة الرد', OutgoingIssued: 'صدر رقم صادر', Linked: 'رُبط بخطاب ذي صلة',
   },
   work: {
     assignee: 'مُسند إلى', unassigned: 'غير مُسند', assignPlaceholder: 'إسناد إلى…', assigned: 'أُسند إلى {name}',

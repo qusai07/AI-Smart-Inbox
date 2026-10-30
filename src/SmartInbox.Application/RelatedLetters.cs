@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SmartInbox.Domain;
 
 namespace SmartInbox.Application;
@@ -221,6 +222,34 @@ public class RelatedLetterFinder(IAppDbContext db, ThreadOptions options, Regist
         return added;
     }
 
+    /// <summary>
+    /// The department that already has this case: where the most recent related letter was routed, or the department
+    /// that sent the letter of ours it replies to. <paramref name="pending"/> are links added but not saved yet.
+    /// </summary>
+    public async Task<int?> CaseDepartmentAsync(Guid documentId, IReadOnlyList<DocumentLink> pending, CancellationToken ct)
+    {
+        var links = await db.DocumentLinks.AsNoTracking()
+            .Where(l => l.RemovedAt == null && (l.DocumentId == documentId || l.RelatedDocumentId == documentId))
+            .ToListAsync(ct);
+        links.AddRange(pending);
+        if (links.Count == 0) return null;
+
+        var others = links.Select(l => l.DocumentId == documentId ? l.RelatedDocumentId : l.DocumentId).OfType<Guid>().Distinct().ToList();
+        var routed = await db.Documents.AsNoTracking()
+            .Where(d => others.Contains(d.Id) && d.AssignedDepartmentId != null)
+            .OrderByDescending(d => d.UploadedAt)
+            .Select(d => d.AssignedDepartmentId)
+            .FirstOrDefaultAsync(ct);
+        if (routed is not null) return routed;
+
+        var ours = links.Where(l => l.OutgoingLetterId != null).Select(l => l.OutgoingLetterId!.Value).Distinct().ToList();
+        return ours.Count == 0 ? null : await db.OutgoingLetters.AsNoTracking()
+            .Where(l => ours.Contains(l.Id))
+            .OrderByDescending(l => l.IssuedAt)
+            .Select(l => (int?)l.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     private static async Task<IEnumerable<Found>> DuplicatesAsync(Document doc, IQueryable<Document> others, CancellationToken ct)
     {
         var (file, text) = (doc.ContentHash, doc.TextHash);
@@ -299,4 +328,112 @@ public class RelatedLetterFinder(IAppDbContext db, ThreadOptions options, Regist
         (LetterKeys.SenderName(sender), LetterKeys.Domain(fromAddress) ?? LetterKeys.Domain(sender));
 
     private static string Limit(string s) => s.Length <= 300 ? s : s[..300];
+}
+
+/// <summary>A letter related to the one being viewed, and why.</summary>
+public record RelatedLetterDto(
+    long LinkId, LinkKind Kind, string? Evidence, bool Earlier, DateTime LinkedAt,
+    Guid? DocumentId, string? FileName, DateTime? UploadedAt, DocumentStatus? Status, int? DepartmentId, HandlingStatus? Handling, string? Sender,
+    Guid? OutgoingLetterId, string? OutgoingNumber);
+
+/// <summary>Related letters for people: only letters they may see; a wrong link can be removed (and stays removed).</summary>
+public class RelatedLetterService(IAppDbContext db, ICurrentUser user)
+{
+    /// <summary>Null when the document doesn't exist or the user can't see it.</summary>
+    public async Task<IReadOnlyList<RelatedLetterDto>?> ListAsync(Guid documentId, CancellationToken ct)
+    {
+        if (!await db.Documents.VisibleTo(user).AnyAsync(d => d.Id == documentId, ct)) return null;
+        var links = await db.DocumentLinks.AsNoTracking()
+            .Where(l => l.RemovedAt == null && (l.DocumentId == documentId || l.RelatedDocumentId == documentId))
+            .ToListAsync(ct);
+        if (links.Count == 0) return [];
+
+        var ids = links.Select(l => l.DocumentId == documentId ? l.RelatedDocumentId : l.DocumentId).OfType<Guid>().Distinct().ToList();
+        var docs = await db.Documents.AsNoTracking().VisibleTo(user)
+            .Where(d => ids.Contains(d.Id))
+            .Select(d => new { d.Id, d.FileName, d.UploadedAt, d.Status, d.AssignedDepartmentId, d.Handling, Sender = d.Analysis != null ? d.Analysis.Sender : null })
+            .ToDictionaryAsync(d => d.Id, ct);
+        var outgoingIds = links.Where(l => l.OutgoingLetterId != null).Select(l => l.OutgoingLetterId!.Value).Distinct().ToList();
+        var outgoing = await db.OutgoingLetters.AsNoTracking()
+            .Where(l => outgoingIds.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id, l => new { l.Number, l.DepartmentId }, ct);
+
+        var result = new List<RelatedLetterDto>();
+        foreach (var l in links)
+        {
+            var otherId = l.DocumentId == documentId ? l.RelatedDocumentId : l.DocumentId;
+            var ours = l.OutgoingLetterId is { } o && outgoing.TryGetValue(o, out var letter)
+                       && (user.RestrictedToDepartment is not { } own || own == letter.DepartmentId) ? letter : null;
+            if (otherId is { } id)
+            {
+                if (!docs.TryGetValue(id, out var d)) continue; // a letter in another department: not shown
+                result.Add(new RelatedLetterDto(l.Id, l.Kind, l.Evidence, l.DocumentId == documentId, l.CreatedAt,
+                    d.Id, d.FileName, d.UploadedAt, d.Status, d.AssignedDepartmentId, d.Handling, d.Sender, ours is null ? null : l.OutgoingLetterId, ours?.Number));
+            }
+            else if (ours is not null)
+            {
+                result.Add(new RelatedLetterDto(l.Id, l.Kind, l.Evidence, true, l.CreatedAt,
+                    null, null, null, null, ours.DepartmentId, null, null, l.OutgoingLetterId, ours.Number));
+            }
+        }
+        return result.OrderBy(r => r.Kind).ThenByDescending(r => r.UploadedAt ?? r.LinkedAt).ToList();
+    }
+
+    public enum RemoveOutcome { Removed, NotFound }
+
+    public async Task<RemoveOutcome> RemoveAsync(Guid documentId, long linkId, CancellationToken ct)
+    {
+        if (!await db.Documents.VisibleTo(user).AnyAsync(d => d.Id == documentId, ct)) return RemoveOutcome.NotFound;
+        var link = await db.DocumentLinks.FirstOrDefaultAsync(
+            l => l.Id == linkId && l.RemovedAt == null && (l.DocumentId == documentId || l.RelatedDocumentId == documentId), ct);
+        if (link is null) return RemoveOutcome.NotFound;
+        link.RemovedAt = DateTime.UtcNow;
+        link.RemovedBy = user.Name;
+        db.DocumentEvents.Add(new DocumentEvent { DocumentId = documentId, Type = DocumentEventType.Linked, Actor = user.Name, Note = $"Link removed: {link.Evidence}" });
+        await db.SaveChangesAsync(ct);
+        return RemoveOutcome.Removed;
+    }
+}
+
+/// <summary>
+/// Letters received before related-letter matching existed have no keys: give them file hashes and keys (oldest first,
+/// so newer letters find older ones) and link them. Quiet: no timeline entries or webhooks for history.
+/// </summary>
+public class RelatedLetterBackfill(
+    IAppDbContext db, IFileStorage storage, RelatedLetterFinder finder, ThreadOptions options, TimeProvider clock, ILogger<RelatedLetterBackfill> logger)
+{
+    public async Task<int> RunAsync(CancellationToken ct, int batchSize = 50)
+    {
+        if (!options.Enabled) return 0;
+        var since = clock.GetUtcNow().UtcDateTime.AddDays(-options.LookbackDays);
+        var unreadable = new List<Guid>(); // e.g. a file removed from storage: skipped, not retried in this run
+        var done = 0;
+        while (true)
+        {
+            var batch = await db.Documents
+                .Where(d => d.ContentHash == null && d.UploadedAt >= since && !unreadable.Contains(d.Id))
+                .OrderBy(d => d.UploadedAt)
+                .Take(batchSize)
+                .ToListAsync(ct);
+            if (batch.Count == 0) return done;
+
+            foreach (var d in batch)
+            {
+                try
+                {
+                    await using var file = storage.Open(d.StoragePath);
+                    d.ContentHash = await LetterKeys.HashAsync(file, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogDebug(ex, "No file to hash for document {DocumentId}", d.Id);
+                    unreadable.Add(d.Id);
+                }
+                await db.SaveChangesAsync(ct);
+                await finder.LinkAsync(d.Id, ct);
+                await db.SaveChangesAsync(ct); // before the next one, so it can find this one
+                done++;
+            }
+        }
+    }
 }

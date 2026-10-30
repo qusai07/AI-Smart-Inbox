@@ -34,6 +34,7 @@ Every delivery appears in the endpoint's **Deliveries** log with the status code
 | `draft.ready` | A reply draft has been prepared and waits for a person. `data`: `draftId`, `documentId`, `version`, `status`, `templateKey`, `departmentId`, `actor`, `url` — never the letter text |
 | `draft.approved` | A person approved a reply (same `data`; fetch the text with `GET /api/drafts/{draftId}`) |
 | `register.issued` | An outgoing number was issued — on approving a reply, or by hand. `data`: `outgoingLetterId`, `number`, `departmentId`, `documentId`, `replyDraftId`, `issuedBy`, `url` |
+| `document.linked` | A letter was found to belong with another: `documentId`, `relatedDocumentId` (null when it only quotes one of our letters registered by hand), `outgoingLetterId`, `kind` (`Duplicate`, `RepliesToOurLetter`, `EmailThread`, `FollowUp`), `url`. Never the letters' content |
 | `webhook.ping` | An admin clicked **Send test** (not subscribable) |
 
 Unrouted documents (`received`, `analyzed`, `analysis_failed` before routing) only go to endpoints that are not limited to a department.
