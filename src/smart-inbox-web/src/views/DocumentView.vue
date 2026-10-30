@@ -11,9 +11,10 @@ import HandlingActions from '../components/HandlingActions.vue'
 import ActivityTimeline from '../components/ActivityTimeline.vue'
 import CommentThread from '../components/CommentThread.vue'
 import ReplyPanel from '../components/ReplyPanel.vue'
+import RelatedLetters from '../components/RelatedLetters.vue'
 import type { Member } from '../api'
 import { formatDate, formatDateTime } from '../components/Badges'
-import { api, type DocumentDetail } from '../api'
+import { api, type DocumentDetail, type RelatedLetter } from '../api'
 import { onStatusChanged } from '../realtime'
 import { useDepartmentName, useDepartments } from '../stores/departments'
 import { useStats } from '../stores/stats'
@@ -129,8 +130,21 @@ const languageName = computed(() => {
   return '—'
 })
 
+const related = ref<RelatedLetter[]>([])
+/** The earlier copy when this letter was received before: shown as a warning at the top. */
+const duplicateOf = computed(() => related.value.find((r) => r.kind === 'Duplicate' && r.earlier && r.documentId) ?? null)
+
+async function loadRelated() {
+  try {
+    related.value = await api.related(props.id)
+  } catch {
+    related.value = []
+  }
+}
+
 async function load() {
   try {
+    loadRelated()
     doc.value = await api.get(props.id)
     error.value = null
     selectedDepartment.value = doc.value.routing?.finalDepartmentId ?? doc.value.analysis?.suggestedDepartmentId ?? null
@@ -211,6 +225,21 @@ watch(() => props.id, load, { immediate: true })
         @click="reanalyze"
       />
     </header>
+
+    <div v-if="duplicateOf" class="duplicate" role="alert">
+      <i class="pi pi-exclamation-triangle" />
+      <div class="grow">
+        <strong>{{ t('related.duplicateTitle') }}</strong>
+        <p class="small">
+          {{ t('related.duplicateText', { when: formatDate(duplicateOf.uploadedAt, locale) }) }}
+          <template v-if="duplicateOf.departmentId">{{ t('related.duplicateRouted', { department: departmentName(duplicateOf.departmentId) }) }}</template>
+          <template v-else>{{ t('related.duplicateNotRouted') }}</template>
+        </p>
+      </div>
+      <RouterLink :to="{ name: 'document', params: { id: duplicateOf.documentId! } }" class="small open-copy">
+        {{ t('related.openEarlier') }} <i class="pi pi-arrow-right flip-rtl" />
+      </RouterLink>
+    </div>
 
     <div class="layout">
       <!-- ── AI analysis ───────────────────────────────────────── -->
@@ -387,6 +416,9 @@ watch(() => props.id, load, { immediate: true })
             </div>
           </section>
 
+          <!-- Letters it belongs with -->
+          <RelatedLetters v-if="related.length" :document-id="doc.id" :items="related" @changed="load" />
+
           <!-- Reply draft: for whoever handles the routed document -->
           <ReplyPanel v-if="canAssign" :document-id="doc.id" @changed="load" />
 
@@ -529,6 +561,31 @@ watch(() => props.id, load, { immediate: true })
   color: var(--urgent);
 }
 
+.duplicate {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--high-soft);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--high) 35%, transparent);
+}
+.duplicate > .pi {
+  color: var(--high);
+  margin-top: 3px;
+}
+.duplicate p {
+  margin: 2px 0 0;
+}
+.duplicate .grow {
+  flex: 1;
+}
+.open-copy {
+  white-space: nowrap;
+  align-self: center;
+}
 .head {
   display: flex;
   align-items: flex-start;

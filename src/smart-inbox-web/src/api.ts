@@ -62,6 +62,31 @@ export interface DocumentListItem {
   assigneeId: string | null
   assigneeName: string | null
   source: DocumentSource
+  /** Linked to other letters (duplicates, follow-ups, replies, email threads). */
+  hasRelated: boolean
+  /** The same letter was received before. */
+  possibleDuplicate: boolean
+}
+
+export type LinkKind = 'Duplicate' | 'RepliesToOurLetter' | 'EmailThread' | 'FollowUp'
+
+export interface RelatedLetter {
+  linkId: number
+  kind: LinkKind
+  /** Why they're linked, e.g. "Same reference 2027/118 from Demo City Court". */
+  evidence: string | null
+  /** The other letter came first. */
+  earlier: boolean
+  linkedAt: string
+  documentId: string | null
+  fileName: string | null
+  uploadedAt: string | null
+  status: DocumentStatus | null
+  departmentId: number | null
+  handling: HandlingStatus | null
+  sender: string | null
+  outgoingLetterId: string | null
+  outgoingNumber: string | null
 }
 
 export interface Comment {
@@ -177,6 +202,7 @@ export interface DocumentFilter {
   mine?: boolean | null
   q?: string
   source?: DocumentSource | null
+  related?: boolean | null
   page?: number
   pageSize?: number
 }
@@ -458,6 +484,8 @@ export const api = {
 
   members: (departmentId: number) => request<Member[]>(`/api/departments/${departmentId}/members`),
   assign: (id: string, userId: string | null) => request<void>(`/api/documents/${id}/assign`, json('POST', { userId })),
+  related: (id: string) => request<RelatedLetter[]>(`/api/documents/${id}/related`),
+  removeRelated: (id: string, linkId: number) => request<void>(`/api/documents/${id}/related/${linkId}`, { method: 'DELETE' }),
   comment: (id: string, text: string) => request<Comment>(`/api/documents/${id}/comments`, json('POST', { text })),
 
   // Auth

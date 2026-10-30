@@ -95,7 +95,7 @@ Matching uses indexed columns (hash, normalised reference, Message-Id). No full-
 |---|---|---|
 | 1 | Content hash, email headers, `DocumentLink` + migration; matcher (4 signals, normalisation); unit tests | ☑ |
 | 2 | Run after analysis / re-analysis; routing suggestion from the case; timeline; API, list flags, webhook; eval | ☑ |
-| 3 | Web UI: Related letters box, duplicate warning, inbox icons + filter, remove link, What's new | ☐ |
+| 3 | Web UI: Related letters box, duplicate warning, inbox icons + filter, remove link, What's new | ☑ |
 | 4 | SDK 0.6.0, MCP; docs (`docs/THREADS.md`), README | ☐ |
 
 ---

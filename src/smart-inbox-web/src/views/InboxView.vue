@@ -32,6 +32,7 @@ const filter = reactive<DocumentFilter>({
   priority: null,
   department: null,
   source: (route.query.source as DocumentSource) || null,
+  related: route.query.related === 'true' ? true : null,
   q: '',
   page: 1,
   pageSize: 20,
@@ -63,7 +64,8 @@ const tabs = computed<Tab[]>(() => {
 const isActive = (tab: Tab) => filter.status === tab.status && (filter.handling ?? null) === tab.handling
 const priorityOptions = computed(() => PRIORITIES.map((p) => ({ label: t(`priority.${p}`), value: p })))
 const departmentOptions = computed(() => departments.items.map((d) => ({ label: departmentName(d.id), value: d.id })))
-const hasFilters = computed(() => !!(filter.status || filter.priority || filter.department || filter.source || filter.q))
+const hasFilters = computed(() => !!(filter.status || filter.priority || filter.department || filter.source || filter.related || filter.q))
+const relatedOptions = computed(() => [{ label: t('related.filterLinked'), value: true }, { label: t('related.filterAlone'), value: false }])
 const sourceOptions = computed(() => (['Email', 'Upload', 'Api'] as const).map((s) => ({ label: t(`source.${s}`), value: s })))
 const resultLabel = computed(() => (total.value === 1 ? t('inbox.results1') : t('inbox.results', { n: total.value })))
 
@@ -94,7 +96,7 @@ watch(() => [route.query.status, route.query.handling], ([s, h]) => {
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(() => [filter.status, filter.handling, filter.priority, filter.department, filter.source], () => {
+watch(() => [filter.status, filter.handling, filter.priority, filter.department, filter.source, filter.related], () => {
   filter.page = 1
   loading.value = true
   load()
@@ -115,7 +117,7 @@ function onPage(e: PageState) {
 }
 
 function clearFilters() {
-  Object.assign(filter, { priority: null, department: null, source: null, q: '' })
+  Object.assign(filter, { priority: null, department: null, source: null, related: null, q: '' })
   setTab({ status: null, handling: null })
 }
 
@@ -182,6 +184,7 @@ onUnmounted(() => {
     <Select v-model="filter.priority" :options="priorityOptions" option-label="label" option-value="value" :placeholder="t('filters.priority')" show-clear class="filter" />
     <Select v-model="filter.department" :options="departmentOptions" option-label="label" option-value="value" :placeholder="t('filters.department')" show-clear class="filter wide" />
     <Select v-model="filter.source" :options="sourceOptions" option-label="label" option-value="value" :placeholder="t('filters.source')" show-clear class="filter" />
+    <Select v-model="filter.related" :options="relatedOptions" option-label="label" option-value="value" :placeholder="t('related.filter')" show-clear class="filter" />
     <Button v-if="hasFilters" :label="t('actions.clear')" icon="pi pi-filter-slash" severity="secondary" text @click="clearFilters" />
   </div>
 
@@ -230,6 +233,8 @@ onUnmounted(() => {
         <div class="line1">
           <strong class="title" dir="auto">{{ title(row) }}</strong>
           <i v-if="row.source === 'Email'" class="pi pi-envelope faint" :title="t('source.Email')" :aria-label="t('source.Email')" />
+          <i v-if="row.possibleDuplicate" class="pi pi-exclamation-triangle dup" :title="t('related.possibleDuplicate')" :aria-label="t('related.possibleDuplicate')" />
+          <i v-else-if="row.hasRelated" class="pi pi-link faint" :title="t('related.hasRelated')" :aria-label="t('related.hasRelated')" />
           <span v-if="row.priority && row.priority !== 'Normal'" class="pill" :class="`p-${row.priority}`"><span class="dot" />{{ t(`priority.${row.priority}`) }}</span>
           <span v-if="row.category" class="pill neutral">{{ t(`category.${row.category}`) }}</span>
           <span class="grow" />
@@ -568,5 +573,8 @@ onUnmounted(() => {
   .filter.wide {
     flex: 1 1 140px;
   }
+}
+.dup {
+  color: var(--high);
 }
 </style>

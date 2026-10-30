@@ -145,6 +145,8 @@ onUnmounted(() => {
     >
       <div class="line1">
         <strong class="title" dir="auto">{{ row.sender ?? row.fileName }}</strong>
+        <i v-if="row.possibleDuplicate" class="pi pi-exclamation-triangle dup" :title="t('related.possibleDuplicate')" :aria-label="t('related.possibleDuplicate')" />
+        <i v-else-if="row.hasRelated" class="pi pi-link faint" :title="t('related.hasRelated')" :aria-label="t('related.hasRelated')" />
         <span v-if="row.priority && row.priority !== 'Normal'" class="pill" :class="`p-${row.priority}`"><span class="dot" />{{ t(`priority.${row.priority}`) }}</span>
         <span v-if="row.category" class="pill neutral">{{ t(`category.${row.category}`) }}</span>
         <span v-if="row.handling && handling === null" class="pill" :class="`h-${row.handling}`">{{ t(`handling.${row.handling}`) }}</span>
@@ -335,5 +337,8 @@ onUnmounted(() => {
     position: static;
     margin-top: 8px;
   }
+}
+.dup {
+  color: var(--high);
 }
 </style>
