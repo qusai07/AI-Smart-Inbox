@@ -33,10 +33,11 @@ public abstract record SmartInboxEvent
 /// <param name="Deadline">Deadline found in the document, if any.</param>
 /// <param name="Actor">Who did it: a person, "API key: ...", the AI model or "system".</param>
 /// <param name="Url">Link to the document in the Smart Inbox web app.</param>
+/// <param name="Source">How it came in: upload, API or the shared mailbox.</param>
 public sealed record DocumentEventData(
     Guid DocumentId, DocumentStatus Status, int? DepartmentId, int? PreviousDepartmentId, int? SuggestedDepartmentId,
     Priority? Priority, DocumentCategory? Category, double? Confidence, HandlingStatus? Handling,
-    DateOnly? Deadline, string? Actor, string Url);
+    DateOnly? Deadline, string? Actor, string Url, DocumentSource Source = DocumentSource.Upload);
 
 /// <summary>An event about one document.</summary>
 public abstract record DocumentEvent : SmartInboxEvent

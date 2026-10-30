@@ -2,6 +2,7 @@
 //
 //   dotnet run --project tests/SmartInbox.AiEvals -- --provider Rules|Ollama|Claude|Hybrid [--samples <dir>] [--out <file>]
 //   dotnet run --project tests/SmartInbox.AiEvals -- --drafting [--provider Rules]   reply drafting (templates) → docs/EVALS-drafting.md
+//   dotnet run --project tests/SmartInbox.AiEvals -- --mailbox [--provider Rules]    letters by email vs upload → docs/EVALS-mailbox.md
 //
 // Rules and Ollama are free. Claude needs Claude:ApiKey (user-secrets of SmartInbox.Api) or ANTHROPIC_API_KEY and costs tokens.
 
@@ -19,10 +20,11 @@ using SmartInbox.Infrastructure.TextExtraction;
 var root = FindRepoRoot();
 var samplesDir = ArgValue("--samples") ?? Path.Combine(root, "samples");
 var drafting = Environment.GetCommandLineArgs().Contains("--drafting");
+var mailboxMode = Environment.GetCommandLineArgs().Contains("--mailbox");
 // Drafting is measured on top of the free rule engine unless another engine is asked for.
-var provider = ArgValue("--provider") ?? (drafting ? "Rules" : null);
+var provider = ArgValue("--provider") ?? (drafting || mailboxMode ? "Rules" : null);
 var outFile = ArgValue("--out") ?? Path.Combine(root, "docs",
-    drafting ? "EVALS-drafting.md" : provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
+    drafting ? "EVALS-drafting.md" : mailboxMode ? "EVALS-mailbox.md" : provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
 
 var labels = JsonSerializer.Deserialize<LabelFile>(
     await File.ReadAllTextAsync(Path.Combine(samplesDir, "labels.json")),
@@ -47,6 +49,17 @@ var ai = services.GetRequiredService<IAiProvider>();
 var model = SmartInbox.Infrastructure.DependencyInjection.Describe(config);
 ITextExtractor[] extractors = [new PlainTextExtractor(), new EmlTextExtractor(), new PdfTextExtractor(), new DocxTextExtractor()];
 var departments = DepartmentSeed.All;
+
+if (mailboxMode)
+{
+    var mailRows = await MailboxEval.RunAsync(labels.Documents.Select(d => (d.File, d.Category, d.Priority, d.DepartmentId)), samplesDir, ai, extractors, departments, evalDate);
+    var mailReport = MailboxEval.Report(mailRows, model, evalDate);
+    Directory.CreateDirectory(Path.GetDirectoryName(outFile)!);
+    await File.WriteAllTextAsync(outFile, mailReport);
+    Console.WriteLine(mailReport);
+    Console.WriteLine($"Written to {outFile}");
+    return 0;
+}
 
 Console.WriteLine($"Running {labels.Documents.Count} samples against {model} (as of {evalDate:yyyy-MM-dd})…\n");
 

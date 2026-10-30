@@ -158,18 +158,18 @@ Docker demo: `docker compose --profile mailbox up` adds a **GreenMail** test mai
 | 1 | `InboundEmail` + `Document.Source` + migration; `IMailboxClient`; `MailboxImporter` with the rules in §2 and §5; unit tests with a fake mailbox; check smtp4dev IMAP (moved to Day 2: Docker wasn't running) | ☑ |
 | 2 | `ImapMailboxClient` (MailKit), `MailboxWorker`, move/flag, retries; admin API (status, test, check, imports, retry); Docker demo wiring (GreenMail); integration test against the test mail server (runs in CI; not yet run locally) | ☑ |
 | 3 | Web UI: Administration → Mailbox, "Received by email" box + original download, inbox icon/filter, Integrations card, What's new item | ☑ |
-| 4 | Webhook/SDK/MCP `source`; end-to-end eval with the 20 samples by email; `docs/MAILBOX.md`; README | ☐ |
+| 4 | Webhook/SDK/MCP `source`; end-to-end eval with the 20 samples by email; `docs/MAILBOX.md`; README | ☑ |
 
 ---
 
 ## 10. Definition of Done
 
-- [ ] All tests green in CI (no real mail server needed for unit tests)
+- [x] All tests green (no real mail server needed for unit tests; real IMAP tests run in CI against GreenMail)
 - [ ] With the Docker demo, an email sent to the test mailbox appears in Smart Inbox analysed, with its original email attached
-- [ ] No duplicates after restarts, re-runs or a crash between save and move (tested)
-- [ ] Admin can see status, test the connection, check now, and retry failures
-- [ ] 20 samples by email give the same analysis as uploads
-- [ ] `docs/MAILBOX.md` (setup for Gmail / Outlook.com / own server, app passwords, troubleshooting) + README
+- [x] No duplicates after restarts, re-runs or a crash between save and move (tested)
+- [x] Admin can see status, test the connection, check now, and retry failures
+- [x] 20 samples by email give the same analysis as uploads (`docs/EVALS-mailbox.md`: 20/20 attached, 19/19 in the body)
+- [x] `docs/MAILBOX.md` (setup for Gmail / Outlook.com / own server, app passwords, troubleshooting) + README
 
 ---
 

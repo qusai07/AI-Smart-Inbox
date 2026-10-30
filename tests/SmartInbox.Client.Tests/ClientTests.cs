@@ -212,6 +212,7 @@ public class ClientTests(SmartInboxFactory server)
     [InlineData(typeof(Comment), "CommentDto")]
     [InlineData(typeof(ReplyDraft), "ReplyDraftDto")]
     [InlineData(typeof(ReplyTemplate), "ReplyTemplateDto")]
+    [InlineData(typeof(SourceEmail), "SourceEmailDto")]
     public async Task Contract_SdkModelsMatchSwaggerSchemas(Type sdkType, string schema)
     {
         using var http = server.CreateClient();

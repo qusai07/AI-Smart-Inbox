@@ -80,7 +80,8 @@ SmartInbox-Signature: t=1793611440,v1=5f2b...e9
 | `data.departmentId` | Department it is routed to (null before routing) |
 | `data.suggestedDepartmentId` / `confidence` / `priority` / `category` | The AI analysis, once there is one |
 | `data.handling` | `New`, `Acknowledged` or `Closed` once routed |
-| `data.actor` | A person's name, `API key: <name>`, the AI model, or `system` |
+| `data.actor` | A person's name, `API key: <name>`, the AI model, `Mailbox: <address>`, or `system` |
+| `data.source` | How the document came in: `Upload`, `Api` or `Email` |
 
 Payloads are **thin**: ids and key fields only, never summaries, extracted text, notes or comments. To get details, call `GET /api/documents/{documentId}` with an API key; this keeps document content out of third-party logs and applies the key's permissions.
 

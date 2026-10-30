@@ -65,6 +65,14 @@ public class MailboxApiTests(SmartInboxFactory server)
         Assert.All(fromEmail.GetProperty("items").EnumerateArray(), d => Assert.Equal("Email", d.GetProperty("source").GetString()));
 
         Assert.Equal(0, (await CheckNowAsync(admin)).GetProperty("imported").GetInt32()); // left the folder: nothing new
+
+        // The SDK sees the same: source, covering email, and the source filter.
+        Assert.Equal(DocumentSource.Email, doc.Source);
+        Assert.Equal("sender@partner.gov", doc.SourceEmail!.FromAddress);
+        var emailed = new List<Guid>();
+        await foreach (var d in inbox.Documents.ListAllAsync(new DocumentListQuery { Source = DocumentSource.Email })) emailed.Add(d.Id);
+        Assert.Contains(docId, emailed);
+        await foreach (var d in inbox.Documents.ListAllAsync(new DocumentListQuery { Source = DocumentSource.Upload })) Assert.NotEqual(docId, d.Id);
     }
 
     [Fact]
