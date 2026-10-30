@@ -110,7 +110,7 @@ Department (+)
 |---|---|---|
 | 1 | `OutgoingLetter`, `RegisterCounter`, department code + migration; `RegisterService` (numbering, issue, send, cancel); unit tests incl. concurrency | ☑ |
 | 2 | Reply integration (marker, number on approval, Word, timeline); API + CSV; webhook | ☑ |
-| 3 | Web UI: Register page, manual entry, sent/cancel, reply panel + document page changes, department codes, What's new | ☐ |
+| 3 | Web UI: Register page, manual entry, sent/cancel, reply panel + document page changes, department codes, What's new | ☑ |
 | 4 | SDK 0.5.0, MCP `search_register`; docs (`docs/REGISTER.md`), README | ☐ |
 
 ---

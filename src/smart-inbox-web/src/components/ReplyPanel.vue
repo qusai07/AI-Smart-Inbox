@@ -7,7 +7,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
-import { api, type ReplyDraft, type ReplyTemplate } from '../api'
+import { api, NUMBER_MARKERS, type ReplyDraft, type ReplyTemplate } from '../api'
 import { formatDateTime } from './Badges'
 import { onDraftChanged } from '../realtime'
 
@@ -132,6 +132,7 @@ const dirty = computed(() => {
   return !!d && (form.subjectEn !== (d.subjectEn ?? '') || form.bodyEn !== (d.bodyEn ?? '') || form.subjectAr !== (d.subjectAr ?? '') || form.bodyAr !== (d.bodyAr ?? ''))
 })
 const gaps = computed(() => countGaps(form.subjectEn, form.bodyEn, form.subjectAr, form.bodyAr))
+const awaitsNumber = computed(() => NUMBER_MARKERS.some((m) => [form.subjectEn, form.bodyEn, form.subjectAr, form.bodyAr].some((x) => x.includes(m))))
 const canApprove = computed(() => editable.value && !dirty.value && gaps.value === 0 && !!form.bodyEn.trim() && !!form.bodyAr.trim())
 
 async function save() {
@@ -154,8 +155,12 @@ async function approve() {
   if (!current.value) return
   busy.value = true
   try {
-    await api.approveDraft(current.value.id)
-    toast.add({ severity: 'success', summary: t('reply.approved'), life: 2500 })
+    const approved = await api.approveDraft(current.value.id)
+    toast.add({
+      severity: 'success',
+      summary: approved.outgoingNumber ? t('reply.approvedNumber', { number: approved.outgoingNumber }) : t('reply.approved'),
+      life: approved.outgoingNumber ? 6000 : 2500,
+    })
     await load()
     emit('changed')
   } catch (e) {
@@ -255,6 +260,9 @@ async function copy(lang: 'en' | 'ar') {
         <div class="meta small muted">
           <span class="pill neutral">{{ byline }}</span>
           <span v-if="current.status === 'Approved'" class="pill d-ok"><i class="pi pi-check-circle" /> {{ t('reply.approvedBy', { who: current.decidedBy, when: formatDateTime(current.decidedAt!, locale) }) }}</span>
+          <RouterLink v-if="current.outgoingNumber" :to="{ name: 'register', query: { q: current.outgoingNumber } }" class="pill d-ok number-link ltr">
+            <i class="pi pi-hashtag" /> {{ current.outgoingNumber }}
+          </RouterLink>
           <span v-else-if="current.status === 'Rejected'" class="pill d-bad"><i class="pi pi-times-circle" /> {{ t('reply.rejected') }}</span>
           <span v-if="current.requestedBy">{{ t('reply.requestedBy', { who: current.requestedBy }) }}</span>
         </div>
@@ -263,6 +271,7 @@ async function copy(lang: 'en' | 'ar') {
         <div v-if="editable" class="gaps" :class="{ none: gaps === 0 }">
           <i :class="gaps ? 'pi pi-exclamation-circle' : 'pi pi-check'" />
           {{ gaps ? t('reply.gaps', { n: gaps }) : t('reply.noGaps') }}
+          <span v-if="awaitsNumber" class="muted"> · <i class="pi pi-hashtag" /> {{ t('reply.numberOnApproval') }}</span>
         </div>
 
         <div class="letters">
@@ -414,6 +423,10 @@ async function copy(lang: 'en' | 'ar') {
   font-weight: 600;
   background: var(--high-soft);
   color: var(--high);
+}
+.number-link {
+  text-decoration: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .gaps.none {
   background: var(--ok-soft);

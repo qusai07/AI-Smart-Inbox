@@ -209,12 +209,35 @@ async function saveSignatory(id: number) {
   }
 }
 
+// ── Department codes (outgoing numbers) ──────────────────────────
+const codes = reactive<Record<number, string>>({})
+const savingCode = ref<number | null>(null)
+const codeChanged = (id: number) =>
+  (codes[id] ?? '').trim().toUpperCase() !== (departments.items.find((x) => x.id === id)?.code ?? '')
+
+async function saveCode(id: number) {
+  savingCode.value = id
+  try {
+    const code = codes[id].trim().toUpperCase() || null
+    await api.setDepartmentCode(id, code)
+    const d = departments.items.find((x) => x.id === id)
+    if (d) d.code = code
+    codes[id] = code ?? ''
+    toast.add({ severity: 'success', summary: t('admin.saved'), life: 2000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('errors.generic'), detail: (e as Error).message, life: 5000 })
+  } finally {
+    savingCode.value = null
+  }
+}
+
 onMounted(async () => {
   await Promise.all([load(), loadKeys(), departments.load()])
   for (const d of departments.items) {
     emails[d.id] = d.email ?? ''
     heads[d.id] = d.headEmail ?? ''
     signatories[d.id] = signatoryOf(d.id)
+    codes[d.id] = d.code ?? ''
   }
   await scrollToHash()
 })
@@ -323,6 +346,23 @@ watch(() => route.hash, scrollToHash)
           <InputText v-model="signatories[d.id].nameAr" dir="rtl" class="grow" maxlength="150" :placeholder="t('admin.nameAr')" :aria-label="t('admin.nameAr')" />
         </template>
         <Button :label="t('admin.save')" size="small" outlined class="save-col" :loading="savingSignatory === d.id" :disabled="!signatoryChanged(d.id)" @click="saveSignatory(d.id)" />
+      </div>
+    </div>
+  </section>
+
+  <section id="codes" class="card block">
+    <div class="block-head">
+      <div>
+        <h2>{{ t('admin.codes') }}</h2>
+        <p class="small muted hint">{{ t('admin.codesHint') }}</p>
+      </div>
+      <RouterLink :to="{ name: 'register' }" class="small">{{ t('register.title') }} <i class="pi pi-arrow-right flip-rtl" /></RouterLink>
+    </div>
+    <div class="codes">
+      <div v-for="d in departments.items" :key="d.id" class="code-row">
+        <span class="dept">{{ departmentName(d.id) }}</span>
+        <InputText v-model="codes[d.id]" dir="ltr" maxlength="10" class="code-input" placeholder="LEG" :aria-label="t('admin.code')" @keyup.enter="codeChanged(d.id) && saveCode(d.id)" />
+        <Button :label="t('admin.save')" size="small" outlined :loading="savingCode === d.id" :disabled="!codeChanged(d.id)" @click="saveCode(d.id)" />
       </div>
     </div>
   </section>
@@ -609,5 +649,25 @@ watch(() => route.hash, scrollToHash)
   .dept {
     width: 100%;
   }
+}
+.codes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px 24px;
+  padding: 14px 20px 18px;
+}
+.code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.code-row .dept {
+  flex: 1;
+  font-size: 0.88rem;
+}
+.code-input {
+  width: 90px;
+  text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 </style>

@@ -25,6 +25,7 @@ export const router = createRouter({
       component: () => import('./views/DepartmentView.vue'),
       props: (route) => ({ departmentId: Number(route.params.departmentId) }),
     },
+    { path: '/register', name: 'register', component: () => import('./views/RegisterView.vue') },
     { path: '/admin', name: 'admin', component: () => import('./views/AdminView.vue'), meta: { admin: true } },
     { path: '/integrations', name: 'integrations', component: () => import('./views/IntegrationsView.vue'), meta: { admin: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -50,6 +50,37 @@ public class RegisterApiTests(SmartInboxFactory server)
     }
 
     [Fact]
+    public async Task IssuedForADocument_ShowsOnTheDocument()
+    {
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        var doc = await server.Sdk(key).Documents.UploadTextAsync("A letter we answer outside Smart Inbox.");
+        using var desk = await HttpAsync("Clerk");
+        var number = (await (await desk.PostAsJsonAsync("api/register",
+            new { departmentId = 5, recipient = "Partner agency", subjectEn = "Our answer", documentId = doc.Id })).Content
+            .ReadFromJsonAsync<JsonElement>()).GetProperty("number").GetString();
+
+        var detail = await desk.GetFromJsonAsync<JsonElement>($"api/documents/{doc.Id}");
+        var outgoing = Assert.Single(detail.GetProperty("outgoing").EnumerateArray());
+        Assert.Equal(number, outgoing.GetProperty("number").GetString());
+        Assert.Contains(detail.GetProperty("timeline").EnumerateArray(), e => e.GetProperty("type").GetString() == "OutgoingIssued");
+    }
+
+    [Fact]
+    public async Task DepartmentCode_AdminSetsIt_Validated_AndUnique()
+    {
+        using var admin = await server.AdminAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "ST R" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "leg" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = " plan " })).StatusCode);
+        var departments = await admin.GetFromJsonAsync<JsonElement>("api/departments");
+        Assert.Equal("PLAN", departments.EnumerateArray().Single(d => d.GetProperty("id").GetInt32() == 7).GetProperty("code").GetString());
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "STR" })).StatusCode);
+
+        using var clerk = await HttpAsync("Clerk");
+        Assert.Equal(HttpStatusCode.Forbidden, (await clerk.PutAsJsonAsync("api/departments/7/code", new { code = "X" })).StatusCode);
+    }
+
+    [Fact]
     public async Task DepartmentStaff_OwnDepartmentOnly_AndCantCancel()
     {
         using var desk = await HttpAsync("Clerk");

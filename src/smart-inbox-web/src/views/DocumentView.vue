@@ -326,6 +326,12 @@ watch(() => props.id, load, { immediate: true })
                 <template v-else-if="closedEmail.status === 'Failed'">{{ t('notify.closedFailed', { to: closedEmail.to }) }}: {{ closedEmail.error }}</template>
                 <template v-else>{{ t('notify.closedPending', { to: closedEmail.to }) }}</template>
               </p>
+              <p v-for="o in doc.outgoing ?? []" :key="o.id" class="email-status small replied" :class="{ cancelled: o.status === 'Cancelled' }">
+                <i class="pi pi-hashtag" />
+                {{ t('detail.repliedWith') }}
+                <RouterLink :to="{ name: 'register', query: { q: o.number } }" class="ltr num">{{ o.number }}</RouterLink>
+                <span class="faint">· {{ t(`register.status.${o.status}`) }} · {{ formatDateTime(o.issuedAt, locale) }}</span>
+              </p>
             </div>
 
             <!-- AI suggestion -->
@@ -606,6 +612,13 @@ watch(() => props.id, load, { immediate: true })
 }
 
 /* Decision card */
+.replied .num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+}
+.replied.cancelled .num {
+  text-decoration: line-through;
+}
 .decision {
   overflow: hidden;
   border-color: var(--brand);

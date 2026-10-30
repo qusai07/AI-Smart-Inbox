@@ -130,6 +130,8 @@ public class DocumentService(
         var a = d.Analysis;
         var r = d.RoutingDecisions.OrderByDescending(x => x.DecidedAt).FirstOrDefault();
         var email = d.InboundEmailId is { } emailId ? await db.InboundEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == emailId, ct) : null;
+        var outgoing = await db.OutgoingLetters.AsNoTracking().Where(l => l.DocumentId == d.Id).OrderBy(l => l.IssuedAt)
+            .Select(l => new OutgoingRefDto(l.Id, l.Number, l.Status, l.IssuedAt)).ToListAsync(ct);
         return new DocumentDetailDto(
             d.Id, d.FileName, d.ContentType, d.Status, d.UploadedAt, d.ExtractedText, d.ErrorMessage,
             a is null ? null : new AnalysisDto(
@@ -147,7 +149,8 @@ public class DocumentService(
             d.Comments.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).Select(CommentDto.From).ToList(),
             d.Source,
             email is null ? null : new SourceEmailDto(email.Id, email.FromName, email.FromAddress, email.Subject, email.SentAt, email.BodyText,
-                ReplyDraftRules.FromJson(email.SkippedAttachments)));
+                ReplyDraftRules.FromJson(email.SkippedAttachments)),
+            outgoing);
     }
 
     public async Task<(Stream Content, string ContentType, string FileName)?> OpenFileAsync(Guid id, CancellationToken ct)

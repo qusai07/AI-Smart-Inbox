@@ -2,7 +2,7 @@ import { createI18n } from 'vue-i18n'
 
 const en = {
   app: { title: 'Smart Inbox', subtitle: 'Ministry of Digital Services – Demo', live: 'Live updates on', offline: 'Reconnecting…' },
-  nav: { inbox: 'Inbox', needsReview: 'Needs review', ready: 'Ready to route', dashboard: 'Insights', theme: 'Theme', language: 'Language', dark: 'Dark', light: 'Light' },
+  nav: { inbox: 'Inbox', needsReview: 'Needs review', ready: 'Ready to route', dashboard: 'Insights', register: 'Outgoing register', theme: 'Theme', language: 'Language', dark: 'Dark', light: 'Light' },
   actions: {
     upload: 'New correspondence', reanalyze: 'Re-analyze', accept: 'Accept & route', override: 'Choose another department',
     route: 'Route', cancel: 'Cancel', back: 'Inbox', clear: 'Clear', open: 'Open', retry: 'Retry',
@@ -59,7 +59,7 @@ const en = {
     language: 'Language', actionItems: 'Action items', noActionItems: 'No action required.',
     suggestion: 'Suggested department', confidence: 'confidence', reasoning: 'Why this department',
     lowConfidence: 'The AI is unsure about this one. Please choose the department.',
-    noSuggestion: 'The AI could not suggest a department.', routedTo: 'Routed to', overridden: 'Overrode the AI suggestion',
+    noSuggestion: 'The AI could not suggest a department.', routedTo: 'Routed to', repliedWith: 'Replied with', overridden: 'Overrode the AI suggestion',
     acceptedAi: 'Accepted the AI suggestion', note: 'Add a note for the department (optional)', processing: 'Reading the document…',
     processingHint: 'Summaries, key details and a routing suggestion will appear here in a few seconds.',
     extractedText: 'Text', file: 'File', noPreview: 'No preview available for this file type.', model: 'Analyzed by', tokens: 'tokens',
@@ -104,6 +104,7 @@ const en = {
   },
   admin: {
     title: 'Administration', subtitle: 'People, roles, departments, API keys and webhooks.', nav: 'Administration',
+    codes: 'Department codes', codesHint: 'Short codes for outgoing numbers, e.g. LEG in MDS/LEG/2026/0042 (used when the number format includes the department).', code: 'Code',
     signatures: 'Reply signatures', signaturesHint: 'Printed under every reply letter from the department. Leave a title empty to leave a [●] for whoever finishes the draft.',
     titleEn: 'Title (English)', titleAr: 'المسمى (عربي)', nameEn: 'Name (English)', nameAr: 'الاسم (عربي)', optional: 'optional',
     users: 'Users', departments: 'Department emails', add: 'Add user', name: 'Name', role: 'Role', department: 'Department',
@@ -169,8 +170,25 @@ const en = {
       keys: { title: 'API keys', text: 'Let other systems use Smart Inbox, each key with its own role.' },
       webhooks: { title: 'Webhooks', text: 'Notify other systems the moment a letter is routed, closed or a reply is approved.' },
       sdk: { title: '.NET SDK', text: 'A ready-made client for developers, with signed-webhook checks built in.' },
+      register: { title: 'Outgoing register', text: 'Every approved reply now gets its official outgoing number automatically. Search, export and record how each letter was sent.' },
       signatures: { title: 'Reply signatures', text: 'Set the title (and name) printed under each department\'s replies.' },
     },
+  },
+  register: {
+    title: 'Outgoing register', subtitle: 'Every letter that leaves the ministry, with its official number.',
+    subtitleDept: "Your department's outgoing letters and their official numbers.",
+    new: 'New outgoing letter', newHint: 'For a letter written outside Smart Inbox, or one that is not a reply. Replies get their number when approved.',
+    issue: 'Issue number', issued: 'Issued {number}', export: 'Export CSV', search: 'Search number, recipient or subject…',
+    year: 'Year', allYears: 'All years', allStatuses: 'All statuses', allDepartments: 'All departments', count: '{n} letter(s)',
+    none: 'No outgoing letters match.', number: 'Number', date: 'Issued', recipient: 'Recipient', subject: 'Subject',
+    subjectEn: 'Subject (English)', subjectAr: 'Subject (Arabic)', replyTo: 'Reply to incoming letter', linked: 'Incoming letter',
+    linkedHint: 'Will be linked to the incoming letter you came from.',
+    status: { Issued: 'Issued', Sent: 'Sent', Cancelled: 'Cancelled' },
+    via: { Email: 'Email', Post: 'Post', Hand: 'By hand', Other: 'Other' },
+    markSent: 'Mark as sent', markSentTitle: 'Mark {number} as sent', how: 'How', when: 'When', note: 'Note (optional)',
+    notePlaceholder: 'e.g. registered mail no., email address',
+    cancel: 'Cancel number', cancelTitle: 'Cancel {number}', reason: 'Reason (required)',
+    cancelHint: 'The number stays in the register, marked cancelled with your reason. It is never issued again.',
   },
   reply: {
     title: 'Reply', intro: 'Prepare the formal reply in English and Arabic from a template. Nothing is sent: you edit, approve and send it yourself.',
@@ -184,6 +202,7 @@ const en = {
     copyEn: 'Copy English', copyAr: 'نسخ العربي', copied: 'Copied', word: 'Download Word', version: 'Version {v}', latest: 'latest',
     viewing: 'You are viewing an older version.', backToLatest: 'Back to latest',
     by: { Templates: 'Template', Edited: 'Edited by {who}' }, requestedBy: 'Requested by {who}', notes: 'Notes',
+    numberOnApproval: 'Our ref is issued on approval', approvedNumber: 'Approved · outgoing number {number}',
   },
   webhooks: {
     title: 'Webhooks', hint: 'Smart Inbox POSTs a signed event to these URLs when documents change.',
@@ -205,7 +224,7 @@ const en = {
 
 const ar: typeof en = {
   app: { title: 'البريد الذكي', subtitle: 'وزارة الخدمات الرقمية – تجريبي', live: 'التحديث المباشر يعمل', offline: 'جارٍ إعادة الاتصال…' },
-  nav: { inbox: 'الوارد', needsReview: 'بحاجة إلى مراجعة', ready: 'جاهز للإحالة', dashboard: 'المؤشرات', theme: 'المظهر', language: 'اللغة', dark: 'داكن', light: 'فاتح' },
+  nav: { inbox: 'الوارد', needsReview: 'بحاجة إلى مراجعة', ready: 'جاهز للإحالة', dashboard: 'المؤشرات', register: 'سجل الصادر', theme: 'المظهر', language: 'اللغة', dark: 'داكن', light: 'فاتح' },
   actions: {
     upload: 'مراسلة جديدة', reanalyze: 'إعادة التحليل', accept: 'اعتماد وإحالة', override: 'اختيار إدارة أخرى',
     route: 'إحالة', cancel: 'إلغاء', back: 'الوارد', clear: 'مسح', open: 'فتح', retry: 'إعادة المحاولة',
@@ -262,7 +281,7 @@ const ar: typeof en = {
     language: 'اللغة', actionItems: 'الإجراءات المطلوبة', noActionItems: 'لا توجد إجراءات مطلوبة.',
     suggestion: 'الإدارة المقترحة', confidence: 'ثقة', reasoning: 'سبب الاقتراح',
     lowConfidence: 'الذكاء الاصطناعي غير متأكد من هذه المراسلة. يرجى اختيار الإدارة.',
-    noSuggestion: 'لم يتمكن الذكاء الاصطناعي من اقتراح إدارة.', routedTo: 'أُحيلت إلى', overridden: 'تم تعديل اقتراح الذكاء الاصطناعي',
+    noSuggestion: 'لم يتمكن الذكاء الاصطناعي من اقتراح إدارة.', routedTo: 'أُحيلت إلى', repliedWith: 'رُدّ عليه بالصادر رقم', overridden: 'تم تعديل اقتراح الذكاء الاصطناعي',
     acceptedAi: 'تم اعتماد اقتراح الذكاء الاصطناعي', note: 'أضف ملاحظة للإدارة (اختياري)', processing: 'جارٍ قراءة المستند…',
     processingHint: 'سيظهر الملخص والبيانات الرئيسية والإحالة المقترحة هنا خلال ثوانٍ.',
     extractedText: 'النص', file: 'الملف', noPreview: 'لا تتوفر معاينة لهذا النوع من الملفات.', model: 'حلّله', tokens: 'رمز',
@@ -307,6 +326,7 @@ const ar: typeof en = {
   },
   admin: {
     title: 'الإدارة', subtitle: 'المستخدمون والأدوار والإدارات ومفاتيح الواجهة البرمجية والويب هوك.', nav: 'الإدارة',
+    codes: 'رموز الإدارات', codesHint: 'رموز قصيرة لأرقام الصادر، مثل LEG في MDS/LEG/2026/0042 (تُستخدم إذا تضمّن نمط الرقم رمز الإدارة).', code: 'الرمز',
     signatures: 'توقيعات الردود', signaturesHint: 'يظهر أسفل كل رد صادر عن الإدارة. إذا تُرك المسمى فارغاً يظهر [●] لمن يكمل المسودة.',
     titleEn: 'Title (English)', titleAr: 'المسمى (عربي)', nameEn: 'Name (English)', nameAr: 'الاسم (عربي)', optional: 'اختياري',
     users: 'المستخدمون', departments: 'بريد الإدارات', add: 'إضافة مستخدم', name: 'الاسم', role: 'الدور', department: 'الإدارة',
@@ -372,8 +392,25 @@ const ar: typeof en = {
       keys: { title: 'مفاتيح الواجهة البرمجية', text: 'تتيح للأنظمة الأخرى استخدام البريد الذكي، ولكل مفتاح دوره.' },
       webhooks: { title: 'الويب هوك', text: 'إبلاغ الأنظمة الأخرى فور إحالة خطاب أو إغلاقه أو اعتماد رد.' },
       sdk: { title: 'مكتبة .NET', text: 'عميل جاهز للمطورين مع التحقق من توقيع الويب هوك.' },
+      register: { title: 'سجل الصادر', text: 'يحصل كل رد معتمد الآن على رقم صادر رسمي تلقائياً. ابحث وصدّر وسجّل طريقة إرسال كل خطاب.' },
       signatures: { title: 'توقيعات الردود', text: 'حدّد المسمى (والاسم) الذي يظهر أسفل ردود كل إدارة.' },
     },
+  },
+  register: {
+    title: 'سجل الصادر', subtitle: 'كل خطاب يصدر عن الوزارة برقمه الرسمي.',
+    subtitleDept: 'خطابات إدارتك الصادرة وأرقامها الرسمية.',
+    new: 'خطاب صادر جديد', newHint: 'لخطاب كُتب خارج البريد الذكي أو لا يكون رداً. تحصل الردود على رقمها عند الاعتماد.',
+    issue: 'إصدار رقم', issued: 'صدر الرقم {number}', export: 'تصدير CSV', search: 'ابحث بالرقم أو الجهة أو الموضوع…',
+    year: 'السنة', allYears: 'كل السنوات', allStatuses: 'كل الحالات', allDepartments: 'كل الإدارات', count: '{n} خطاب',
+    none: 'لا توجد خطابات صادرة مطابقة.', number: 'الرقم', date: 'تاريخ الإصدار', recipient: 'الجهة المرسل إليها', subject: 'الموضوع',
+    subjectEn: 'الموضوع (بالإنجليزية)', subjectAr: 'الموضوع (بالعربية)', replyTo: 'رد على خطاب وارد', linked: 'الخطاب الوارد',
+    linkedHint: 'سيُربط بالخطاب الوارد الذي جئت منه.',
+    status: { Issued: 'صادر', Sent: 'أُرسل', Cancelled: 'ملغى' },
+    via: { Email: 'بريد إلكتروني', Post: 'بريد', Hand: 'تسليم باليد', Other: 'أخرى' },
+    markSent: 'تسجيل الإرسال', markSentTitle: 'تسجيل إرسال {number}', how: 'طريقة الإرسال', when: 'التاريخ', note: 'ملاحظة (اختياري)',
+    notePlaceholder: 'مثل رقم البريد المسجل أو عنوان البريد الإلكتروني',
+    cancel: 'إلغاء الرقم', cancelTitle: 'إلغاء {number}', reason: 'السبب (مطلوب)',
+    cancelHint: 'يبقى الرقم في السجل مُعلَّماً بالإلغاء مع السبب، ولا يُصدر مرة أخرى.',
   },
   reply: {
     title: 'الرد', intro: 'إعداد الرد الرسمي بالعربية والإنجليزية من قالب. لا يُرسل شيء تلقائياً: أنت من يعدّل ويعتمد ويرسل.',
@@ -387,6 +424,7 @@ const ar: typeof en = {
     copyEn: 'Copy English', copyAr: 'نسخ العربي', copied: 'تم النسخ', word: 'تنزيل ملف Word', version: 'النسخة {v}', latest: 'الأحدث',
     viewing: 'أنت تعرض نسخة سابقة.', backToLatest: 'العودة إلى الأحدث',
     by: { Templates: 'قالب', Edited: 'عدّلها {who}' }, requestedBy: 'طلبها {who}', notes: 'ملاحظات',
+    numberOnApproval: 'يصدر رقمنا عند الاعتماد', approvedNumber: 'اعتُمد · رقم الصادر {number}',
   },
   webhooks: {
     title: 'الويب هوك', hint: 'يرسل البريد الذكي حدثًا موقّعًا إلى هذه العناوين عند تغيّر المراسلات.',
