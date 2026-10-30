@@ -18,7 +18,8 @@ public record DocumentListItemDto(
     double? Confidence,
     HandlingStatus? Handling,
     string? AssigneeId,
-    string? AssigneeName);
+    string? AssigneeName,
+    DocumentSource Source = DocumentSource.Upload);
 
 public record DocumentDetailDto(
     Guid Id,
@@ -35,7 +36,13 @@ public record DocumentDetailDto(
     IReadOnlyList<NotificationDto> Notifications,
     IReadOnlyList<DocumentEventDto> Timeline,
     AssigneeDto? Assignee,
-    IReadOnlyList<CommentDto> Comments);
+    IReadOnlyList<CommentDto> Comments,
+    DocumentSource Source = DocumentSource.Upload,
+    SourceEmailDto? SourceEmail = null);
+
+/// <summary>The email a document arrived in: who sent it and the covering message.</summary>
+public record SourceEmailDto(Guid Id, string? FromName, string? FromAddress, string? Subject, DateTime? SentAt, string? BodyText,
+    IReadOnlyList<string> SkippedAttachments);
 
 public record AssigneeDto(string Id, string Name);
 
@@ -99,6 +106,7 @@ public record DocumentQuery(
     /// <summary>Only items assigned to the current user.</summary>
     bool Mine = false,
     string? Q = null,
+    DocumentSource? Source = null,
     int Page = 1,
     int PageSize = 20);
 

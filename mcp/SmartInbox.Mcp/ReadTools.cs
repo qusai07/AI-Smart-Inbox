@@ -14,12 +14,12 @@ public sealed record FromDocument(string? Sender, string? Summary);
 public sealed record DocumentRow(
     Guid Id, string FileName, DocumentStatus Status, DateTime UploadedAt, DocumentCategory? Category,
     Priority? Priority, DateOnly? Deadline, int? SuggestedDepartmentId, double? Confidence, int? DepartmentId,
-    HandlingStatus? Handling, string? AssigneeName, FromDocument FromDocument)
+    HandlingStatus? Handling, string? AssigneeName, DocumentSource Source, FromDocument FromDocument)
 {
     public static DocumentRow From(DocumentSummary d) => new(
         d.Id, d.FileName, d.Status, d.UploadedAt, d.Category, d.Priority, d.Deadline,
         d.SuggestedDepartmentId, d.Confidence is { } c ? Math.Round(c, 2) : null, d.FinalDepartmentId, d.Handling,
-        d.AssigneeName, new FromDocument(Untrusted.Clean(d.Sender, 120), Untrusted.Clean(d.SummaryEn, 240)));
+        d.AssigneeName, d.Source, new FromDocument(Untrusted.Clean(d.Sender, 120), Untrusted.Clean(d.SummaryEn, 240)));
 }
 
 public sealed record DocumentPage(int Total, int Page, int? NextPage, IReadOnlyList<DocumentRow> Items);
@@ -49,6 +49,7 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
         [Description("Routed to (or, if not routed, suggested for) this department id")] int? departmentId = null,
         [Description("Department handling: New, Acknowledged, Closed")] HandlingStatus? handling = null,
         [Description("Free-text search over file name, text, summaries, sender and reference number")] string? search = null,
+        [Description("How it came in: Upload, Email (the shared mailbox) or Api")] DocumentSource? source = null,
         [Description("1-based page")] int page = 1,
         [Description("Rows per page, max 50")] int pageSize = 20,
         CancellationToken ct = default) =>
@@ -58,7 +59,7 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
             var result = await inbox.Documents.ListAsync(new DocumentListQuery
             {
                 Status = status, Priority = priority, Department = departmentId, Handling = handling,
-                Search = search, Page = Math.Max(1, page), PageSize = size,
+                Search = search, Source = source, Page = Math.Max(1, page), PageSize = size,
             }, ct);
             return new DocumentPage(result.Total, result.PageNumber, result.HasMore ? result.PageNumber + 1 : null,
                 result.Items.Select(DocumentRow.From).ToList());
@@ -74,7 +75,7 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
             var a = d.Analysis;
             return new
             {
-                d.Id, d.FileName, d.Status, d.UploadedAt, d.ErrorMessage,
+                d.Id, d.FileName, d.Status, d.UploadedAt, d.ErrorMessage, d.Source,
                 TextLength = d.ExtractedText?.Length ?? 0,
                 Analysis = a is null ? null : new
                 {
@@ -87,6 +88,12 @@ public sealed class ReadTools(ToolRunner run, SmartInboxMcpOptions options, Time
                     SummaryEn = Untrusted.Clean(a.SummaryEn, 2000), SummaryAr = Untrusted.Clean(a.SummaryAr, 2000),
                     AiReasoning = Untrusted.Clean(a.Reasoning, 1000),
                     ActionItems = d.ActionItems.Select(i => new { Description = Untrusted.Clean(i.Description, 500), i.DueDate }),
+                    // The covering email is the sender's words too.
+                    Email = d.SourceEmail is not { } e ? null : new
+                    {
+                        From = Untrusted.Clean(e.FromName is null ? e.FromAddress : $"{e.FromName} <{e.FromAddress}>", 200),
+                        Subject = Untrusted.Clean(e.Subject, 300), e.SentAt, CoveringMessage = Untrusted.Clean(e.BodyText, 2000),
+                    },
                 },
                 d.Routing, d.Handling, d.Assignee,
                 Comments = d.Comments.Select(c => new { c.AuthorName, c.Text, c.CreatedAt }),

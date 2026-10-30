@@ -40,6 +40,20 @@ public enum DocumentEventType
     DraftRejected
 }
 
+public enum DocumentSource
+{
+    Upload,
+    Email,
+    Api
+}
+
+public enum InboundEmailStatus
+{
+    Imported,
+    Skipped,
+    Failed
+}
+
 public enum ReplyDraftStatus
 {
     Requested,

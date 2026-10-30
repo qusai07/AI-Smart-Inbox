@@ -14,6 +14,13 @@ public enum Priority { Low, Normal, High, Urgent }
 
 public enum DocumentCategory { Request, Complaint, Invitation, Circular, Invoice, Legal, Other }
 
+/// <summary>How a document came in: the web upload, an API key, or the shared mailbox.</summary>
+public enum DocumentSource { Upload, Email, Api }
+
+/// <summary>The email a document arrived in. Its text comes from outside the organisation.</summary>
+public sealed record SourceEmail(Guid Id, string? FromName, string? FromAddress, string? Subject, DateTime? SentAt, string? BodyText,
+    IReadOnlyList<string> SkippedAttachments);
+
 /// <summary>Returned by an upload. Analysis runs in the background; see <see cref="DocumentsClient.WaitForAnalysisAsync"/>.</summary>
 public sealed record UploadedDocument(Guid Id, DocumentStatus Status);
 
@@ -22,14 +29,14 @@ public sealed record DocumentSummary(
     Guid Id, string FileName, DocumentStatus Status, DateTime UploadedAt,
     string? SummaryEn, string? SummaryAr, DocumentCategory? Category, Priority? Priority, string? Sender,
     DateOnly? Deadline, int? SuggestedDepartmentId, int? FinalDepartmentId, double? Confidence,
-    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName);
+    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload);
 
 /// <summary>A document with its analysis, routing, handling and timeline.</summary>
 public sealed record DocumentDetail(
     Guid Id, string FileName, string ContentType, DocumentStatus Status, DateTime UploadedAt,
     string? ExtractedText, string? ErrorMessage, Analysis? Analysis, IReadOnlyList<ActionItem> ActionItems,
     RoutingDecision? Routing, Handling? Handling, IReadOnlyList<TimelineEntry> Timeline,
-    Assignee? Assignee, IReadOnlyList<Comment> Comments)
+    Assignee? Assignee, IReadOnlyList<Comment> Comments, DocumentSource Source = DocumentSource.Upload, SourceEmail? SourceEmail = null)
 {
     /// <summary>True once analysis has finished (successfully or not).</summary>
     public bool IsAnalysisComplete => Status is not (DocumentStatus.Uploaded or DocumentStatus.Processing);
@@ -117,6 +124,8 @@ public sealed record DocumentListQuery
     public HandlingStatus? Handling { get; init; }
     /// <summary>Only documents assigned to the key itself (rarely useful for keys; mirrors the web app's "Mine").</summary>
     public bool Mine { get; init; }
+    /// <summary>Only documents that came in this way (e.g. <see cref="DocumentSource.Email"/>).</summary>
+    public DocumentSource? Source { get; init; }
     /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
     public string? Search { get; init; }
     /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>

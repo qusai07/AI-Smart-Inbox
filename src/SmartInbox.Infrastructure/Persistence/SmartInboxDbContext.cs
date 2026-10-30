@@ -20,6 +20,7 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<ReplyDraft> ReplyDrafts => Set<ReplyDraft>();
+    public DbSet<InboundEmail> InboundEmails => Set<InboundEmail>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -52,6 +53,9 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasMany(x => x.Notifications).WithOne().HasForeignKey(x => x.DocumentId);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.DocumentId);
             e.HasMany(x => x.Comments).WithOne().HasForeignKey(x => x.DocumentId);
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(10).HasDefaultValue(DocumentSource.Upload);
+            e.HasIndex(x => x.Source);
+            e.HasOne<InboundEmail>().WithMany().HasForeignKey(x => x.InboundEmailId).OnDelete(DeleteBehavior.SetNull);
             e.Property(x => x.AssigneeId).HasMaxLength(450);
             e.Property(x => x.AssigneeName).HasMaxLength(200);
             e.HasIndex(x => x.AssigneeId);
@@ -138,6 +142,23 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasIndex(x => new { x.EndpointId, x.CreatedAt });
             e.HasOne<WebhookEndpoint>().WithMany().HasForeignKey(x => x.EndpointId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<InboundEmail>(e =>
+        {
+            e.Property(x => x.MessageId).HasMaxLength(500);
+            e.HasIndex(x => x.MessageId).IsUnique();
+            e.Property(x => x.Mailbox).HasMaxLength(320);
+            e.Property(x => x.FromName).HasMaxLength(200);
+            e.Property(x => x.FromAddress).HasMaxLength(320);
+            e.Property(x => x.Subject).HasMaxLength(500);
+            e.Property(x => x.BodyText).HasMaxLength(MailboxRules.MaxBodyText);
+            e.Property(x => x.StoragePath).HasMaxLength(500);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Reason).HasMaxLength(1000);
+            e.Property(x => x.DocumentIds).HasMaxLength(2000);
+            e.Property(x => x.SkippedAttachments).HasMaxLength(4000);
+            e.HasIndex(x => x.ReceivedAt);
         });
 
         b.Entity<ReplyDraft>(e =>

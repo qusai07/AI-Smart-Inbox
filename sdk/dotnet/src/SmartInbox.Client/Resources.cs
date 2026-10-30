@@ -125,6 +125,7 @@ public sealed class DocumentsClient
         Add("assigned", q.Assigned);
         Add("handling", q.Handling);
         Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
+        Add("source", q.Source);
         if (q.Mine) Add("mine", "true");
         Add("page", q.Page);
         Add("pageSize", q.PageSize);

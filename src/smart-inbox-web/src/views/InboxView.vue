@@ -12,7 +12,7 @@ import Message from 'primevue/message'
 import ConfidenceRing from '../components/ConfidenceRing.vue'
 import DeadlineChip from '../components/DeadlineChip.vue'
 import { timeAgo } from '../components/Badges'
-import { api, PRIORITIES, type DocumentFilter, type DocumentListItem, type DocumentStatus, type HandlingStatus } from '../api'
+import { api, PRIORITIES, type DocumentFilter, type DocumentListItem, type DocumentStatus, type HandlingStatus, type DocumentSource } from '../api'
 import { onStatusChanged } from '../realtime'
 import { useDepartmentName, useDepartments } from '../stores/departments'
 import { useStats } from '../stores/stats'
@@ -31,6 +31,7 @@ const filter = reactive<DocumentFilter>({
   handling: (route.query.handling as HandlingStatus) || null,
   priority: null,
   department: null,
+  source: (route.query.source as DocumentSource) || null,
   q: '',
   page: 1,
   pageSize: 20,
@@ -62,7 +63,8 @@ const tabs = computed<Tab[]>(() => {
 const isActive = (tab: Tab) => filter.status === tab.status && (filter.handling ?? null) === tab.handling
 const priorityOptions = computed(() => PRIORITIES.map((p) => ({ label: t(`priority.${p}`), value: p })))
 const departmentOptions = computed(() => departments.items.map((d) => ({ label: departmentName(d.id), value: d.id })))
-const hasFilters = computed(() => !!(filter.status || filter.priority || filter.department || filter.q))
+const hasFilters = computed(() => !!(filter.status || filter.priority || filter.department || filter.source || filter.q))
+const sourceOptions = computed(() => (['Email', 'Upload', 'Api'] as const).map((s) => ({ label: t(`source.${s}`), value: s })))
 const resultLabel = computed(() => (total.value === 1 ? t('inbox.results1') : t('inbox.results', { n: total.value })))
 
 async function load() {
@@ -92,7 +94,7 @@ watch(() => [route.query.status, route.query.handling], ([s, h]) => {
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined
-watch(() => [filter.status, filter.handling, filter.priority, filter.department], () => {
+watch(() => [filter.status, filter.handling, filter.priority, filter.department, filter.source], () => {
   filter.page = 1
   loading.value = true
   load()
@@ -113,7 +115,7 @@ function onPage(e: PageState) {
 }
 
 function clearFilters() {
-  Object.assign(filter, { priority: null, department: null, q: '' })
+  Object.assign(filter, { priority: null, department: null, source: null, q: '' })
   setTab({ status: null, handling: null })
 }
 
@@ -179,6 +181,7 @@ onUnmounted(() => {
     </IconField>
     <Select v-model="filter.priority" :options="priorityOptions" option-label="label" option-value="value" :placeholder="t('filters.priority')" show-clear class="filter" />
     <Select v-model="filter.department" :options="departmentOptions" option-label="label" option-value="value" :placeholder="t('filters.department')" show-clear class="filter wide" />
+    <Select v-model="filter.source" :options="sourceOptions" option-label="label" option-value="value" :placeholder="t('filters.source')" show-clear class="filter" />
     <Button v-if="hasFilters" :label="t('actions.clear')" icon="pi pi-filter-slash" severity="secondary" text @click="clearFilters" />
   </div>
 
@@ -226,6 +229,7 @@ onUnmounted(() => {
       <div class="body">
         <div class="line1">
           <strong class="title" dir="auto">{{ title(row) }}</strong>
+          <i v-if="row.source === 'Email'" class="pi pi-envelope faint" :title="t('source.Email')" :aria-label="t('source.Email')" />
           <span v-if="row.priority && row.priority !== 'Normal'" class="pill" :class="`p-${row.priority}`"><span class="dot" />{{ t(`priority.${row.priority}`) }}</span>
           <span v-if="row.category" class="pill neutral">{{ t(`category.${row.category}`) }}</span>
           <span class="grow" />

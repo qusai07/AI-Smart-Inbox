@@ -81,6 +81,7 @@ flowchart LR
 | **Department inboxes** | New / In progress / Closed / Assigned to me, with closing notes and overdue indicators |
 | **Assignment and comments** | Assign an item to a staff member of the department (they get an email); internal comment thread on every document, kept as part of the record |
 | **Email notifications** | Routing, "closed" report-back, daily deadline digest, and escalation of overdue items to the department head; transactional outbox with retries; local test mail server |
+| **Shared mailbox** | New emails and their letters are imported automatically over IMAP (free), never twice, then analysed and routed like uploads; the covering email stays with each letter ([docs/MAILBOX.md](docs/MAILBOX.md)) |
 | **Reply drafts (EN + AR)** | Formal reply letters from human-written bilingual templates, filled from the analysis; unknown facts stay `[●]` until a person fills them and approves; Word export. Free, no AI ([docs/DRAFTING.md](docs/DRAFTING.md)) |
 | **Activity timeline** | Append-only history of every step, with who did it and when |
 | **Sign-in** | Local accounts (ASP.NET Core Identity) and Microsoft Entra ID; three roles enforced by the API |
@@ -319,6 +320,9 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 | `POST` | `/api/drafts/{id}/approve` · `/reject` | Same | Approve (no `[●]` left) · reject `{ reason }` |
 | `GET` | `/api/drafts/{id}/docx` · `/api/reply-templates` | Same · Member | Word file · types of reply |
 | `PUT` | `/api/departments/{id}/signatory` | Admin | Who signs the department's replies |
+| `GET` `POST` | `/api/mailbox/status` · `/test` · `/check` | Admin (cookie) | Shared mailbox status · test connection · check now |
+| `GET` `POST` | `/api/mailbox/imports` · `/imports/{id}/retry` | Admin (cookie) | Import log · retry a failed email |
+| `GET` | `/api/documents/{id}/source-email` | Member | The original email a document arrived in |
 | `HUB` | `/hubs/inbox` | Signed in | `DocumentStatusChanged { documentId, status }` |
 
 ## Roadmap
@@ -341,7 +345,8 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 - [x] **API keys, signed webhooks and a .NET SDK** (`SmartInbox.Client`).
 - [x] **MCP server** so Claude can work the inbox (`smartinbox-mcp`).
 - [x] **Reply drafting through MCP** (`draft_reply`): Claude prepares the draft; a person approves it in the web app.
-- [ ] **Mailbox ingestion.** Pull incoming correspondence from a shared mailbox (IMAP or Microsoft Graph), including attachments.
+- [x] **Mailbox ingestion.** Incoming correspondence from a shared mailbox over IMAP, including attachments ([docs/MAILBOX.md](docs/MAILBOX.md)).
+- [ ] **Microsoft 365 mailbox with OAuth** (Exchange Online no longer allows IMAP passwords).
 - [ ] **Microsoft Teams notifications** as an alternative to email.
 - [ ] **Entra app roles / groups** mapped to Admin, Clerk and Department automatically.
 - [ ] **Outgoing correspondence register** with official numbering.

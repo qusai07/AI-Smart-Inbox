@@ -4,6 +4,9 @@ export type Category = 'Request' | 'Complaint' | 'Invitation' | 'Circular' | 'In
 
 export type HandlingStatus = 'New' | 'Acknowledged' | 'Closed'
 
+/** How a document came in. */
+export type DocumentSource = 'Upload' | 'Email' | 'Api'
+
 export const STATUSES: DocumentStatus[] = ['Processing', 'Analyzed', 'NeedsReview', 'Routed', 'Failed']
 
 export interface DocumentEvent {
@@ -56,6 +59,7 @@ export interface DocumentListItem {
   handling: HandlingStatus | null
   assigneeId: string | null
   assigneeName: string | null
+  source: DocumentSource
 }
 
 export interface Comment {
@@ -127,6 +131,9 @@ export interface DocumentDetail {
   timeline: DocumentEvent[]
   assignee: { id: string; name: string } | null
   comments: Comment[]
+  source: DocumentSource
+  /** The email it arrived in (sender, subject, covering message), when source is Email. */
+  sourceEmail: SourceEmail | null
 }
 
 export interface Paged<T> {
@@ -165,6 +172,7 @@ export interface DocumentFilter {
   handling?: HandlingStatus | null
   mine?: boolean | null
   q?: string
+  source?: DocumentSource | null
   page?: number
   pageSize?: number
 }
@@ -248,6 +256,55 @@ export interface WebhookEndpointBody {
   events: string[] | null
   departmentId: number | null
   enabled: boolean
+}
+
+export interface SourceEmail {
+  id: string
+  fromName: string | null
+  fromAddress: string | null
+  subject: string | null
+  sentAt: string | null
+  bodyText: string | null
+  skippedAttachments: string[]
+}
+
+export type InboundEmailStatus = 'Imported' | 'Skipped' | 'Failed'
+
+export interface InboundEmail {
+  id: string
+  messageId: string
+  fromName: string | null
+  fromAddress: string | null
+  subject: string | null
+  sentAt: string | null
+  receivedAt: string
+  status: InboundEmailStatus
+  reason: string | null
+  attempts: number
+  documentIds: string[]
+  skippedAttachments: string[]
+}
+
+export interface MailboxRunResult {
+  imported: number
+  skipped: number
+  failed: number
+  alreadyKnown: number
+}
+
+export interface MailboxStatus {
+  enabled: boolean
+  configured: boolean
+  address: string
+  host: string | null
+  folder: string
+  processedFolder: string | null
+  pollSeconds: number
+  running: boolean
+  lastCheckAt: string | null
+  nextCheckAt: string | null
+  lastResult: MailboxRunResult | null
+  lastError: string | null
 }
 
 export type DraftStatus = 'Requested' | 'Generating' | 'Ready' | 'Approved' | 'Rejected' | 'Failed'
@@ -387,6 +444,13 @@ export const api = {
   createApiKey: (body: { name: string; role: Role; departmentId: number | null; expiresAt: string | null }) =>
     request<{ key: ApiKeyRow; secret: string }>('/api/api-keys', json('POST', body)),
   revokeApiKey: (id: number) => request<void>(`/api/api-keys/${id}`, { method: 'DELETE' }),
+  sourceEmailUrl: (documentId: string) => `/api/documents/${documentId}/source-email`,
+  mailboxStatus: () => request<MailboxStatus>('/api/mailbox/status'),
+  mailboxTest: () => request<{ ok: boolean; pending: number | null; message: string }>('/api/mailbox/test', { method: 'POST' }),
+  mailboxCheck: () => request<MailboxRunResult>('/api/mailbox/check', { method: 'POST' }),
+  mailboxImports: (page: number, status: InboundEmailStatus | null) =>
+    request<Paged<InboundEmail>>(`/api/mailbox/imports?page=${page}${status ? `&status=${status}` : ''}`),
+  mailboxRetry: (id: string) => request<void>(`/api/mailbox/imports/${id}/retry`, { method: 'POST' }),
   replyTemplates: () => request<ReplyTemplate[]>('/api/reply-templates'),
   drafts: (documentId: string) => request<ReplyDraft[]>(`/api/documents/${documentId}/drafts`),
   requestDraft: (documentId: string, templateKey: string | null, instructions: string | null) =>

@@ -2,6 +2,12 @@
 
 All notable changes to `SmartInbox.Client` and `SmartInbox.Client.AspNetCore`. The packages follow [Semantic Versioning](https://semver.org/).
 
+## 0.4.0 — 2026-10-30
+
+- `DocumentSource` (Upload, Email, Api) on `DocumentSummary`, `DocumentDetail` and webhook `DocumentEventData`
+- `DocumentDetail.SourceEmail`: sender, subject, date and covering message of documents that came by email
+- `DocumentListQuery.Source` filter
+
 ## 0.3.0 — 2026-10-30
 
 - `Drafts`: `RequestAsync`, `WaitForDraftAsync`, `GetAsync`, `ListAsync`, `UpdateAsync`, `ApproveAsync`, `RejectAsync`, `DownloadDocxAsync`, `ListTemplatesAsync`

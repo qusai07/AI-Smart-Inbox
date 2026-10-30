@@ -69,6 +69,15 @@ public class DocumentsController(DocumentService documents) : ControllerBase
         return File(file.Content, file.ContentType);
     }
 
+    /// <summary>The original email a document arrived in (download, never shown inline: it's untrusted content).</summary>
+    [HttpGet("{id:guid}/source-email")]
+    public async Task<IActionResult> SourceEmail(Guid id, CancellationToken ct)
+    {
+        if (await documents.OpenSourceEmailAsync(id, ct) is not { } email) return NotFound();
+        Response.Headers.ContentSecurityPolicy = "sandbox";
+        return File(email.Content, "message/rfc822", email.FileName);
+    }
+
     [HttpPost("{id:guid}/reanalyze")]
     [Authorize(Policy = Policies.Desk)]
     public async Task<IActionResult> Reanalyze(Guid id, CancellationToken ct) =>

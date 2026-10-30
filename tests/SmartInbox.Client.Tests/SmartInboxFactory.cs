@@ -30,7 +30,13 @@ public sealed class SmartInboxFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("DataProtection__KeysPath", Path.Combine(_data, "keys"));
         Environment.SetEnvironmentVariable("Webhooks__AllowHttp", "true");
         Environment.SetEnvironmentVariable("Webhooks__AllowPrivateNetworks", "true");
+        // Configured but not polling: tests fill the fake mailbox and press "Check now".
+        Environment.SetEnvironmentVariable("Mailbox__Host", "imap.test");
+        Environment.SetEnvironmentVariable("Mailbox__Username", "correspondence@mds.demo");
     }
+
+    /// <summary>The shared mailbox the app reads from, in memory.</summary>
+    public TestMailbox Mailbox { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -40,6 +46,7 @@ public sealed class SmartInboxFactory : WebApplicationFactory<Program>
             services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<SmartInboxDbContext>)));
             var name = Guid.NewGuid().ToString();
             services.AddDbContext<SmartInboxDbContext>(o => o.UseInMemoryDatabase(name));
+            services.AddSingleton<SmartInbox.Application.IMailboxClient>(Mailbox);
         });
     }
 
@@ -84,4 +91,46 @@ public sealed class SmartInboxFactory : WebApplicationFactory<Program>
 public class ServerCollection : ICollectionFixture<SmartInboxFactory>
 {
     public const string Name = "server";
+}
+
+/// <summary>An in-memory IMAP folder: messages leave it when marked processed.</summary>
+public sealed class TestMailbox : SmartInbox.Application.IMailboxClient
+{
+    private readonly List<SmartInbox.Application.MailMessage> _folder = [];
+    private uint _next = 1;
+
+    public Func<uint, Exception?> FetchFailure { get; set; } = _ => null;
+
+    public uint Add(string subject, string body, string from = "sender@partner.gov", params SmartInbox.Application.MailAttachment[] attachments)
+    {
+        lock (_folder)
+        {
+            var uid = _next++;
+            _folder.Add(new SmartInbox.Application.MailMessage(uid, $"<t{uid}-{Guid.NewGuid():N}@partner.gov>", "Partner Authority", from, subject,
+                DateTimeOffset.UtcNow, body, false, attachments, System.Text.Encoding.UTF8.GetBytes($"Subject: {subject}{Environment.NewLine}{Environment.NewLine}{body}")));
+            return uid;
+        }
+    }
+
+    public Task<IReadOnlyList<SmartInbox.Application.MailboxItem>> ListPendingAsync(int max, CancellationToken ct)
+    {
+        lock (_folder) return Task.FromResult<IReadOnlyList<SmartInbox.Application.MailboxItem>>(_folder.Take(max).Select(m => new SmartInbox.Application.MailboxItem(m.Uid, m.MessageId)).ToList());
+    }
+
+    public Task<SmartInbox.Application.MailMessage> FetchAsync(uint uid, CancellationToken ct)
+    {
+        if (FetchFailure(uid) is { } ex) return Task.FromException<SmartInbox.Application.MailMessage>(ex);
+        lock (_folder) return Task.FromResult(_folder.Single(m => m.Uid == uid));
+    }
+
+    public Task MarkProcessedAsync(uint uid, CancellationToken ct)
+    {
+        lock (_folder) _folder.RemoveAll(m => m.Uid == uid);
+        return Task.CompletedTask;
+    }
+
+    public Task<SmartInbox.Application.MailboxTestResult> TestAsync(CancellationToken ct)
+    {
+        lock (_folder) return Task.FromResult(new SmartInbox.Application.MailboxTestResult(true, _folder.Count, $"Connected; {_folder.Count} waiting."));
+    }
 }

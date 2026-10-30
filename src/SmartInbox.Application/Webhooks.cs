@@ -124,7 +124,7 @@ public record WebhookEnvelope(string Id, string Type, DateTime CreatedAt, string
 public record WebhookDocumentData(
     Guid DocumentId, DocumentStatus Status, int? DepartmentId, int? PreviousDepartmentId, int? SuggestedDepartmentId,
     Priority? Priority, DocumentCategory? Category, double? Confidence, HandlingStatus? Handling,
-    DateOnly? Deadline, string? Actor, string Url);
+    DateOnly? Deadline, string? Actor, string Url, DocumentSource Source = DocumentSource.Upload);
 
 /// <summary>Thin like document events: no letter text, just what's needed to fetch the draft with an API key.</summary>
 public record WebhookDraftData(
@@ -182,7 +182,7 @@ public class WebhookPublisher(IAppDbContext db, NotificationOptions notification
         var data = new WebhookDocumentData(
             d.Id, d.Status, d.AssignedDepartmentId, previousDepartmentId, a?.SuggestedDepartmentId,
             a?.Priority, a?.Category, a?.Confidence, d.Handling, a?.Deadline, actor,
-            $"{notificationOptions.AppBaseUrl.TrimEnd('/')}/documents/{d.Id}");
+            $"{notificationOptions.AppBaseUrl.TrimEnd('/')}/documents/{d.Id}", d.Source);
         return PublishAsync(eventType, data, Audience.Of(d.AssignedDepartmentId, previousDepartmentId), ct, dedupKey);
     }
 

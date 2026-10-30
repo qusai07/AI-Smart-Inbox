@@ -26,6 +26,15 @@ services:
       # here; set both to false when receivers are on the internet.
       Webhooks__AllowHttp: "${WEBHOOKS_ALLOW_HTTP:-true}"
       Webhooks__AllowPrivateNetworks: "${WEBHOOKS_ALLOW_PRIVATE:-true}"
+      # Shared mailbox (off by default). Demo: `docker compose --profile mailbox up` with MAILBOX_ENABLED=true
+      # and MAILBOX_HOST=greenmail (see .env.example); then email correspondence@mds.demo via localhost:3025.
+      Mailbox__Enabled: "${MAILBOX_ENABLED:-false}"
+      Mailbox__Host: "${MAILBOX_HOST:-}"
+      Mailbox__Port: "${MAILBOX_PORT:-993}"
+      Mailbox__Security: "${MAILBOX_SECURITY:-SslOnConnect}"
+      Mailbox__Username: "${MAILBOX_USERNAME:-}"
+      Mailbox__Password: "${MAILBOX_PASSWORD:-}"
+      Mailbox__PollSeconds: "${MAILBOX_POLL_SECONDS:-60}"
       Reminders__Enabled: "${REMINDERS_ENABLED:-true}"
       Reminders__DigestHour: "${REMINDERS_DIGEST_HOUR:-8}"
       Reminders__DueSoonDays: "${REMINDERS_DUE_SOON_DAYS:-3}"
@@ -77,6 +86,18 @@ services:
       - "8090:8090"
     depends_on:
       - app
+    restart: unless-stopped
+
+  # Demo shared mailbox (GreenMail test server, accepts any login): `docker compose --profile mailbox up`.
+  # Send mail to correspondence@mds.demo through SMTP localhost:3025; Smart Inbox reads it over IMAP.
+  greenmail:
+    profiles: ["mailbox"]
+    image: greenmail/standalone:2.1.14
+    environment:
+      GREENMAIL_OPTS: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled"
+    ports:
+      - "3025:3025"
+      - "3143:3143"
     restart: unless-stopped
 
   # Test mail server: catches every email, nothing is delivered. Inbox UI at http://localhost:5100
