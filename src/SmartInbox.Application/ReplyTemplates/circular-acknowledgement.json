@@ -1,0 +1,15 @@
+{
+  "key": "circular-acknowledgement",
+  "nameEn": "Acknowledge a circular",
+  "nameAr": "إشعار باستلام تعميم",
+  "categories": [
+    "Circular"
+  ],
+  "subjectEn": "Circular ref. {TheirReference}",
+  "subjectAr": "بشأن التعميم رقم {TheirReference}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your circular ref. {TheirReference} dated {TheirDate}. Its contents have been noted and shared with the relevant teams, and {DepartmentTeam} will follow up on its implementation.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام تعميمكم رقم {TheirReference} المؤرخ في {TheirDate}، وقد تم الاطلاع على ما ورد فيه وتعميمه على الفرق المعنية، وستتولى {DepartmentTeam} متابعة تنفيذه.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "commitments": [
+    "The department will follow up on implementing the circular"
+  ]
+}

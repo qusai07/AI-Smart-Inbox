@@ -39,4 +39,11 @@ public class SignalRInboxNotifier(IHubContext<InboxHub> hub) : IInboxNotifier
         groups.AddRange(departmentIds.Select(InboxHub.DepartmentGroup));
         return hub.Clients.Groups(groups).SendAsync("DocumentStatusChanged", new { documentId, status }, ct);
     }
+
+    public Task DraftChangedAsync(Guid documentId, Guid draftId, ReplyDraftStatus status, IReadOnlyCollection<int> departmentIds, CancellationToken ct = default)
+    {
+        var groups = new List<string>(departmentIds.Count + 1) { InboxHub.DeskGroup };
+        groups.AddRange(departmentIds.Select(InboxHub.DepartmentGroup));
+        return hub.Clients.Groups(groups).SendAsync("DraftChanged", new { documentId, draftId, status }, ct);
+    }
 }

@@ -16,6 +16,7 @@ public interface IAppDbContext
     DbSet<ApiKey> ApiKeys { get; }
     DbSet<WebhookEndpoint> WebhookEndpoints { get; }
     DbSet<WebhookDelivery> WebhookDeliveries { get; }
+    DbSet<ReplyDraft> ReplyDrafts { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 
@@ -101,6 +102,10 @@ public interface IInboxNotifier
     /// Department staff only ever hear about their own department's documents.
     /// </summary>
     Task DocumentStatusChangedAsync(Guid documentId, DocumentStatus status, IReadOnlyCollection<int> departmentIds, CancellationToken ct = default);
+
+    /// <summary>A reply draft was requested, finished, edited or decided. Same audience rules as documents.</summary>
+    Task DraftChangedAsync(Guid documentId, Guid draftId, ReplyDraftStatus status, IReadOnlyCollection<int> departmentIds, CancellationToken ct = default) =>
+        Task.CompletedTask;
 }
 
 public static class Audience

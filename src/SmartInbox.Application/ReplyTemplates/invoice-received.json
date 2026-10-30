@@ -1,0 +1,15 @@
+{
+  "key": "invoice-received",
+  "nameEn": "Acknowledge an invoice",
+  "nameAr": "إشعار باستلام فاتورة",
+  "categories": [
+    "Invoice"
+  ],
+  "subjectEn": "Your invoice ref. {TheirReference}",
+  "subjectAr": "بشأن فاتورتكم رقم {TheirReference}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your invoice ref. {TheirReference} dated {TheirDate}. It has been forwarded to {DepartmentTeam} to be checked against the related purchase order, and it will be processed in line with the agreed payment terms. Expected payment date: {?Expected payment date}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام فاتورتكم رقم {TheirReference} المؤرخة في {TheirDate}، وقد أُحيلت إلى {DepartmentTeam} لمطابقتها مع أمر الشراء ذي الصلة، وسيتم صرفها وفق شروط الدفع المتفق عليها. تاريخ الدفع المتوقع: {?Expected payment date}.\n\nوتفضلوا بقبول فائق الاحترام والتقدير،\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "commitments": [
+    "Payment in line with the agreed terms, by the expected date stated"
+  ]
+}

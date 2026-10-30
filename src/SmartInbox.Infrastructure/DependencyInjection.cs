@@ -48,6 +48,11 @@ public static class DependencyInjection
         services.AddSingleton(config.GetSection("Reminders").Get<ReminderOptions>() ?? new ReminderOptions());
         services.AddHostedService<ReminderWorker>();
 
+        services.AddSingleton(config.GetSection("Drafting").Get<DraftingOptions>() ?? new DraftingOptions());
+        services.AddSingleton<DraftQueue>();
+        services.AddSingleton<IDraftQueue>(sp => sp.GetRequiredService<DraftQueue>());
+        services.AddHostedService<DraftWorker>();
+
         // Webhook signing secrets are encrypted with Data Protection; the keys must survive restarts (Docker: the /data volume).
         services.AddDataProtection()
             .SetApplicationName("SmartInbox")
