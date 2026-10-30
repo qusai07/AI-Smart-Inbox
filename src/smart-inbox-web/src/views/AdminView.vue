@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -214,7 +215,16 @@ onMounted(async () => {
     heads[d.id] = d.headEmail ?? ''
     signatories[d.id] = signatoryOf(d.id)
   }
+  await scrollToHash()
 })
+
+// Links such as /admin#webhooks (from the Integrations page and What's new) land on the right section.
+const route = useRoute()
+async function scrollToHash() {
+  await nextTick()
+  if (route.hash) document.querySelector(route.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+watch(() => route.hash, scrollToHash)
 </script>
 
 <template>
@@ -287,7 +297,7 @@ onMounted(async () => {
     </div>
   </section>
 
-  <section class="card block">
+  <section id="signatures" class="card block">
     <div class="block-head">
       <div>
         <h2>{{ t('admin.signatures') }}</h2>
@@ -316,7 +326,7 @@ onMounted(async () => {
     </div>
   </section>
 
-  <section class="card block">
+  <section id="api-keys" class="card block">
     <div class="block-head">
       <div>
         <h2>{{ t('admin.apiKeys') }}</h2>

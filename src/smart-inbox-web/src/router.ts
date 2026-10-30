@@ -26,6 +26,7 @@ export const router = createRouter({
       props: (route) => ({ departmentId: Number(route.params.departmentId) }),
     },
     { path: '/admin', name: 'admin', component: () => import('./views/AdminView.vue'), meta: { admin: true } },
+    { path: '/integrations', name: 'integrations', component: () => import('./views/IntegrationsView.vue'), meta: { admin: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

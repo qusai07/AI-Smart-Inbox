@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import Toast from 'primevue/toast'
 import Button from 'primevue/button'
 import UploadDialog from './components/UploadDialog.vue'
+import WhatsNew from './components/WhatsNew.vue'
 import { applyLocale } from './i18n'
 import { applyTheme, theme } from './theme'
 import { connected } from './realtime'
@@ -18,6 +19,7 @@ const router = useRouter()
 const auth = useAuth()
 const stats = useStats()
 const showUpload = ref(false)
+const whatsNew = ref<InstanceType<typeof WhatsNew> | null>(null)
 const menuOpen = ref(false)
 const departments = useDepartments()
 
@@ -62,7 +64,12 @@ const nav = computed(() => [
         { to: { name: 'dashboard' }, icon: 'pi pi-chart-bar', label: t('nav.dashboard'), active: route.name === 'dashboard' },
       ]
     : []),
-  ...(auth.isAdmin ? [{ to: { name: 'admin' }, icon: 'pi pi-users', label: t('admin.nav'), active: route.name === 'admin' }] : []),
+  ...(auth.isAdmin
+    ? [
+        { to: { name: 'admin' }, icon: 'pi pi-users', label: t('admin.nav'), active: route.name === 'admin' },
+        { to: { name: 'integrations' }, icon: 'pi pi-share-alt', label: t('integrations.nav'), active: route.name === 'integrations' },
+      ]
+    : []),
 ] as { to: object; icon: string; label: string; count?: number; active: boolean; tone?: string }[])
 
 function onUploaded() {
@@ -132,6 +139,7 @@ function onUploaded() {
             </button>
           </div>
           <span class="live" :class="{ on: connected }"><span class="pulse" />{{ connected ? t('app.live') : t('app.offline') }}</span>
+          <button type="button" class="whats-new-link" @click="whatsNew?.open()"><i class="pi pi-sparkles" /> {{ t('whatsNew.link') }}</button>
         </div>
       </div>
     </aside>
@@ -146,9 +154,26 @@ function onUploaded() {
   </div>
 
   <UploadDialog v-model:visible="showUpload" @uploaded="onUploaded" />
+  <WhatsNew v-if="showShell" ref="whatsNew" />
 </template>
 
 <style scoped>
+.whats-new-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.whats-new-link:hover {
+  color: var(--brand);
+}
 .shell {
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
