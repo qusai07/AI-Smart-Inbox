@@ -7,7 +7,9 @@ export type HandlingStatus = 'New' | 'Acknowledged' | 'Closed'
 export const STATUSES: DocumentStatus[] = ['Processing', 'Analyzed', 'NeedsReview', 'Routed', 'Failed']
 
 export interface DocumentEvent {
-  type: 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated' | 'Assigned'
+  type:
+    | 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated' | 'Assigned'
+    | 'DraftRequested' | 'DraftReady' | 'DraftFailed' | 'DraftEdited' | 'DraftApproved' | 'DraftRejected'
   actor: string | null
   departmentId: number | null
   note: string | null
@@ -244,6 +246,40 @@ export interface WebhookEndpointBody {
   enabled: boolean
 }
 
+export type DraftStatus = 'Requested' | 'Generating' | 'Ready' | 'Approved' | 'Rejected' | 'Failed'
+
+export interface ReplyDraft {
+  id: string
+  documentId: string
+  version: number
+  isLatest: boolean
+  status: DraftStatus
+  templateKey: string | null
+  engine: string | null
+  instructions: string | null
+  subjectEn: string | null
+  bodyEn: string | null
+  subjectAr: string | null
+  bodyAr: string | null
+  missingInfo: string[]
+  commitments: string[]
+  placeholders: number
+  requestedBy: string | null
+  createdAt: string
+  editedBy: string | null
+  editedAt: string | null
+  decidedBy: string | null
+  decidedAt: string | null
+  error: string | null
+}
+
+export interface ReplyTemplate {
+  key: string
+  nameEn: string
+  nameAr: string
+  categories: Category[]
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -345,6 +381,14 @@ export const api = {
   createApiKey: (body: { name: string; role: Role; departmentId: number | null; expiresAt: string | null }) =>
     request<{ key: ApiKeyRow; secret: string }>('/api/api-keys', json('POST', body)),
   revokeApiKey: (id: number) => request<void>(`/api/api-keys/${id}`, { method: 'DELETE' }),
+  replyTemplates: () => request<ReplyTemplate[]>('/api/reply-templates'),
+  drafts: (documentId: string) => request<ReplyDraft[]>(`/api/documents/${documentId}/drafts`),
+  requestDraft: (documentId: string, templateKey: string | null, instructions: string | null) =>
+    request<ReplyDraft>(`/api/documents/${documentId}/drafts`, json('POST', { templateKey, instructions })),
+  updateDraft: (id: string, body: { subjectEn: string; bodyEn: string; subjectAr: string; bodyAr: string }) =>
+    request<ReplyDraft>(`/api/drafts/${id}`, json('PUT', body)),
+  approveDraft: (id: string) => request<ReplyDraft>(`/api/drafts/${id}/approve`, { method: 'POST' }),
+  rejectDraft: (id: string, reason: string | null) => request<ReplyDraft>(`/api/drafts/${id}/reject`, json('POST', { reason })),
   webhookEvents: () => request<string[]>('/api/webhooks/events'),
   webhooks: () => request<WebhookEndpoint[]>('/api/webhooks'),
   createWebhook: (body: WebhookEndpointBody) => request<{ endpoint: WebhookEndpoint; secret: string }>('/api/webhooks', json('POST', body)),

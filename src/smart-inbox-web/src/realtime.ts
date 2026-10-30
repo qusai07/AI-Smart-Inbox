@@ -7,8 +7,15 @@ export interface StatusChanged {
   status: DocumentStatus
 }
 
+export interface DraftChanged {
+  documentId: string
+  draftId: string
+  status: string
+}
+
 type Listener = (e: StatusChanged) => void
 const listeners = new Set<Listener>()
+const draftListeners = new Set<(e: DraftChanged) => void>()
 
 export const connected = ref(false)
 
@@ -20,6 +27,7 @@ const connection = new HubConnectionBuilder()
   .build()
 
 connection.on('DocumentStatusChanged', (e: StatusChanged) => listeners.forEach((l) => l(e)))
+connection.on('DraftChanged', (e: DraftChanged) => draftListeners.forEach((l) => l(e)))
 connection.onreconnecting(() => (connected.value = false))
 connection.onreconnected(() => (connected.value = true))
 connection.onclose(() => (connected.value = false))
@@ -43,6 +51,12 @@ export async function stopRealtime() {
   wanted = false
   clearTimeout(retry)
   await connection.stop()
+}
+
+/** Subscribe to reply-draft changes; returns an unsubscribe function. */
+export function onDraftChanged(listener: (e: DraftChanged) => void) {
+  draftListeners.add(listener)
+  return () => draftListeners.delete(listener)
 }
 
 /** Subscribe to status changes; returns an unsubscribe function. */

@@ -10,6 +10,7 @@ import DeadlineChip from '../components/DeadlineChip.vue'
 import HandlingActions from '../components/HandlingActions.vue'
 import ActivityTimeline from '../components/ActivityTimeline.vue'
 import CommentThread from '../components/CommentThread.vue'
+import ReplyPanel from '../components/ReplyPanel.vue'
 import type { Member } from '../api'
 import { formatDate, formatDateTime } from '../components/Badges'
 import { api, type DocumentDetail } from '../api'
@@ -359,6 +360,9 @@ watch(() => props.id, load, { immediate: true })
               </div>
             </div>
           </section>
+
+          <!-- Reply draft: for whoever handles the routed document -->
+          <ReplyPanel v-if="canAssign" :document-id="doc.id" @changed="load" />
 
           <!-- Summary -->
           <section class="card card-pad">
