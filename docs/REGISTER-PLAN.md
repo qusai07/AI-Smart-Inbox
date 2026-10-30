@@ -111,14 +111,14 @@ Department (+)
 | 1 | `OutgoingLetter`, `RegisterCounter`, department code + migration; `RegisterService` (numbering, issue, send, cancel); unit tests incl. concurrency | ☑ |
 | 2 | Reply integration (marker, number on approval, Word, timeline); API + CSV; webhook | ☑ |
 | 3 | Web UI: Register page, manual entry, sent/cancel, reply panel + document page changes, department codes, What's new | ☑ |
-| 4 | SDK 0.5.0, MCP `search_register`; docs (`docs/REGISTER.md`), README | ☐ |
+| 4 | SDK 0.5.0, MCP `search_register`; docs (`docs/REGISTER.md`), README | ☑ |
 
 ---
 
 ## 9. Definition of Done
 
 - [ ] All tests green in CI
-- [ ] Approving a reply issues its number into both languages and the Word file; no `[●]` left for our reference
-- [ ] Register page: search, filter, export, manual entry, mark sent, cancel
-- [ ] Parallel issuing never produces duplicates or gaps (tested)
-- [ ] Docs + README
+- [x] Approving a reply issues its number into both languages and the Word file; no `[●]` left for our reference
+- [x] Register page: search, filter, export, manual entry, mark sent, cancel
+- [x] Parallel issuing never produces duplicates or gaps (tested)
+- [x] Docs + README

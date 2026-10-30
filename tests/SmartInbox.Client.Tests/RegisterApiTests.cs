@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using SmartInbox.Client.Webhooks;
 
 namespace SmartInbox.Client.Tests;
 
@@ -47,6 +48,44 @@ public class RegisterApiTests(SmartInboxFactory server)
         Assert.Contains(number, text);
         Assert.Contains("Sent to the wrong address", text);
         Assert.Contains("استفسار عن الفاتورة", text);
+    }
+
+    [Fact]
+    public async Task Sdk_Issue_List_MarkSent_Export_Cancel()
+    {
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        var inbox = server.Sdk(key);
+
+        var issued = await inbox.Register.IssueAsync(new NewOutgoingLetter(6, "Citizen Ahmed", "Your complaint CX-77", "بشأن شكواكم CX-77"));
+        Assert.Equal(OutgoingStatus.Issued, issued.Status);
+        Assert.Equal("API key: Clerk test key", issued.IssuedBy);
+
+        var found = new List<OutgoingLetter>();
+        await foreach (var l in inbox.Register.ListAllAsync(new RegisterQuery { Search = "CX-77", Department = 6 })) found.Add(l);
+        Assert.Equal(issued.Id, Assert.Single(found).Id);
+
+        var sent = await inbox.Register.MarkSentAsync(issued.Id, SentVia.Hand, note: "Front desk");
+        Assert.Equal(SentVia.Hand, sent.SentVia);
+
+        using var csv = (await inbox.Register.ExportCsvAsync(new RegisterQuery { Search = "CX-77" })).Content;
+        Assert.Contains(issued.Number, await new StreamReader(csv).ReadToEndAsync());
+
+        var cancelled = await inbox.Register.CancelAsync(issued.Id, "Duplicate");
+        Assert.Equal("Duplicate", cancelled.CancelReason);
+        await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Register.CancelAsync(issued.Id, "again"));
+        await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Register.MarkSentAsync(issued.Id, SentVia.Post));
+    }
+
+    [Fact]
+    public void RegisterIssuedWebhook_ParsesToATypedEvent()
+    {
+        const string body = """{"id":"evt_12","type":"register.issued","createdAt":"2026-10-30T09:00:00Z","apiVersion":"2026-11-01","data":{"outgoingLetterId":"0b7f2a7e-0000-4000-8000-000000000002","number":"MDS/OUT/2026/0042","departmentId":2,"documentId":"8f3c6a1e-0000-4000-8000-000000000001","replyDraftId":null,"issuedBy":"Sara","url":"https://inbox.example.com/documents/8f3c6a1e-0000-4000-8000-000000000001"}}""";
+
+        var evt = Assert.IsType<RegisterIssuedEvent>(WebhookVerifier.Parse(body));
+
+        Assert.Equal("MDS/OUT/2026/0042", evt.Data.Number);
+        Assert.Equal(2, evt.Data.DepartmentId);
+        Assert.Null(evt.Data.ReplyDraftId);
     }
 
     [Fact]

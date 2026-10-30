@@ -18,6 +18,8 @@ public interface ISmartInboxClient
     StatsClient Stats { get; }
     /// <summary>Bilingual reply drafts: request, edit, approve or reject, download as Word.</summary>
     DraftsClient Drafts { get; }
+    /// <summary>The outgoing register: official numbers for letters that leave the organisation.</summary>
+    RegisterClient Register { get; }
 }
 
 /// <inheritdoc />
@@ -37,6 +39,7 @@ public sealed class SmartInboxClient : ISmartInboxClient
         Departments = new DepartmentsClient(this);
         Stats = new StatsClient(this);
         Drafts = new DraftsClient(this);
+        Register = new RegisterClient(this);
     }
 
     /// <summary>Without dependency injection. Note: no automatic retries; prefer <c>AddSmartInboxClient</c> in apps.</summary>
@@ -50,6 +53,8 @@ public sealed class SmartInboxClient : ISmartInboxClient
     public StatsClient Stats { get; }
     /// <inheritdoc />
     public DraftsClient Drafts { get; }
+    /// <inheritdoc />
+    public RegisterClient Register { get; }
 
     internal static HttpClient Configure(HttpClient http, SmartInboxClientOptions options)
     {

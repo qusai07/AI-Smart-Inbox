@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Net;
-using System.Text.RegularExpressions;
 using SmartInbox.Client.Webhooks;
 
 namespace SmartInbox.Client.Tests;
@@ -50,8 +49,9 @@ public class DraftsApiTests(SmartInboxFactory server)
         var approved = await inbox.Drafts.ApproveAsync(edited.Id);
         Assert.Equal(DraftStatus.Approved, approved.Status);
         Assert.Equal("API key: Clerk test key", approved.DecidedBy);
-        var number = Regex.Match(approved.BodyEn!, @"MDS/OUT/\d{4}/\d{4}").Value;
-        Assert.NotEmpty(number);
+        var number = approved.OutgoingNumber!;
+        Assert.Matches(@"^MDS/OUT/\d{4}/\d{4}$", number);
+        Assert.Contains(number, approved.BodyEn);
         Assert.Contains(number, approved.BodyAr);
         Assert.DoesNotContain("(issued on approval)", approved.BodyEn);
         Assert.Equal([2, 1], (await inbox.Drafts.ListAsync(docId)).Select(d => d.Version));
@@ -71,6 +71,11 @@ public class DraftsApiTests(SmartInboxFactory server)
         Assert.Contains("DraftEdited", timeline);
         Assert.Contains("DraftApproved", timeline);
         Assert.Contains("OutgoingIssued", timeline);
+
+        var entry = await inbox.Register.GetAsync(approved.OutgoingLetterId!.Value);
+        Assert.Equal(number, entry.Number);
+        Assert.Equal(edited.Id, entry.ReplyDraftId);
+        Assert.Equal(number, Assert.Single((await inbox.Documents.GetAsync(docId)).Outgoing!).Number);
     }
 
     [Fact]

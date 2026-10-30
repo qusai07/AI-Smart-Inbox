@@ -87,6 +87,24 @@ public sealed record DraftReadyEvent : DraftEvent;
 /// <summary><c>draft.approved</c>: a person approved a reply; it's ready to be sent by the usual channel.</summary>
 public sealed record DraftApprovedEvent : DraftEvent;
 
+/// <summary>An outgoing number, without the letter: fetch it with <c>Register.GetAsync(OutgoingLetterId)</c>.</summary>
+/// <param name="OutgoingLetterId">The register entry.</param>
+/// <param name="Number">The official number, e.g. MDS/OUT/2026/0042.</param>
+/// <param name="DepartmentId">The department it was issued for.</param>
+/// <param name="DocumentId">The incoming letter it answers, if any.</param>
+/// <param name="ReplyDraftId">The approved reply draft, if it came from one.</param>
+/// <param name="IssuedBy">A person or "API key: ...".</param>
+/// <param name="Url">Link to the incoming document in the web app, if any.</param>
+public sealed record RegisterEventData(
+    Guid OutgoingLetterId, string Number, int DepartmentId, Guid? DocumentId, Guid? ReplyDraftId, string? IssuedBy, string? Url);
+
+/// <summary><c>register.issued</c>: an outgoing number was issued, on approving a reply or by hand.</summary>
+public sealed record RegisterIssuedEvent : SmartInboxEvent
+{
+    /// <summary>The number and its links.</summary>
+    public RegisterEventData Data { get; init; } = null!;
+}
+
 /// <summary><c>webhook.ping</c>: an admin clicked "Send test".</summary>
 public sealed record WebhookPingEvent : SmartInboxEvent
 {

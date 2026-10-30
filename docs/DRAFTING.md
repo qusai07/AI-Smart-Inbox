@@ -46,5 +46,6 @@ Rerun the measurement: `dotnet run --project tests/SmartInbox.AiEvals -c Release
 | SDK (0.3.0) | `inbox.Drafts.RequestAsync`, `WaitForDraftAsync`, `UpdateAsync`, `ApproveAsync`, `RejectAsync`, `DownloadDocxAsync`, `ListTemplatesAsync` |
 | Webhooks | `draft.ready`, `draft.approved` (ids only, never the letter text) |
 | MCP | `draft_reply` (write), `get_reply_drafts`, `list_reply_templates` — **no approve tool**: approval is a person's decision in the web app |
+| Outgoing number | Issued by the register on approval ([REGISTER.md](REGISTER.md)) |
 
 Settings: `Drafting:Enabled` (default `true`), `Drafting:OrganisationNameEn`, `Drafting:OrganisationNameAr`.

@@ -85,6 +85,7 @@ Leave `SMARTINBOX_MCP_WRITES` at `false` to start: Claude can read and advise, b
 | `get_stats` | Volumes, AI routing accuracy, AI usage (desk keys) |
 | `list_reply_templates` | Types of reply and the letter categories they're used for |
 | `get_reply_drafts` | A document's latest reply draft (EN + AR, gaps, missing info, commitments) and earlier versions |
+| `search_register` | The outgoing register: official numbers, by number, recipient, subject, year, department or status. Read-only: numbers are issued when a person approves a reply |
 
 ### Write tools (only with `SMARTINBOX_MCP_WRITES=true`)
 

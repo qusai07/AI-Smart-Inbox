@@ -83,6 +83,7 @@ flowchart LR
 | **Email notifications** | Routing, "closed" report-back, daily deadline digest, and escalation of overdue items to the department head; transactional outbox with retries; local test mail server |
 | **Shared mailbox** | New emails and their letters are imported automatically over IMAP (free), never twice, then analysed and routed like uploads; the covering email stays with each letter ([docs/MAILBOX.md](docs/MAILBOX.md)) |
 | **Reply drafts (EN + AR)** | Formal reply letters from human-written bilingual templates, filled from the analysis; unknown facts stay `[●]` until a person fills them and approves; Word export. Free, no AI ([docs/DRAFTING.md](docs/DRAFTING.md)) |
+| **Outgoing register** | Official outgoing numbers (`MDS/OUT/2026/0042`), issued automatically when a reply is approved and written into both letters; search, CSV export, sent/cancelled tracking. Unique and gap-free under concurrency ([docs/REGISTER.md](docs/REGISTER.md)) |
 | **Activity timeline** | Append-only history of every step, with who did it and when |
 | **Sign-in** | Local accounts (ASP.NET Core Identity) and Microsoft Entra ID; three roles enforced by the API |
 | **Arabic / English UI** | Full right-to-left layout, light and dark mode, works on mobile |
@@ -276,8 +277,8 @@ flowchart LR
 ```
 
 - **API keys** (*Administration → API keys*): `Authorization: Bearer sik_…`. A key has a role (Admin, Clerk or Department, plus a department), so it gets exactly the same permissions as a person with that role. The key is shown once; only its SHA-256 hash is stored. Actions appear on the timeline as `API key: <name>`.
-- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened`, `deadline.approaching`, `draft.ready` and `draft.approved`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
-- **MCP server for Claude** ([docs/MCP.md](docs/MCP.md)): `smartinbox-mcp` lets Claude Desktop or Claude Code find what needs attention, explain letters in English and Arabic, and route or close them. It uses your API key's permissions, is read-only unless you enable writes, and treats letter text as untrusted input (prompt-injection aware).
+- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened`, `deadline.approaching`, `draft.ready`, `draft.approved` and `register.issued`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
+- **MCP server for Claude** ([docs/MCP.md](docs/MCP.md)): `smartinbox-mcp` lets Claude Desktop or Claude Code find what needs attention, explain letters in English and Arabic, search the outgoing register, and route or close them. It uses your API key's permissions, is read-only unless you enable writes, and treats letter text as untrusted input (prompt-injection aware).
 - **.NET SDK** ([`sdk/dotnet`](sdk/dotnet)): `SmartInbox.Client` (typed client, paging, typed errors, safe retries, `WebhookVerifier`) and `SmartInbox.Client.AspNetCore` (`MapSmartInboxWebhooks`). Samples in [`sdk/samples`](sdk/samples).
 
 ```csharp
@@ -317,9 +318,11 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 | `GET` `POST` | `/api/webhooks/{id}/deliveries` · `/deliveries/{id}/redeliver` | Admin (cookie) | Delivery log · send an event again |
 | `GET` `POST` | `/api/documents/{id}/drafts` | Desk or the assigned department | Reply drafts · request one `{ templateKey?, instructions? }` |
 | `GET` `PUT` | `/api/drafts/{id}` | Same | One draft · edit (new version) |
-| `POST` | `/api/drafts/{id}/approve` · `/reject` | Same | Approve (no `[●]` left) · reject `{ reason }` |
+| `POST` | `/api/drafts/{id}/approve` · `/reject` | Same | Approve (no `[●]` left; issues the outgoing number) · reject `{ reason }` |
 | `GET` | `/api/drafts/{id}/docx` · `/api/reply-templates` | Same · Member | Word file · types of reply |
-| `PUT` | `/api/departments/{id}/signatory` | Admin | Who signs the department's replies |
+| `PUT` | `/api/departments/{id}/signatory` · `/code` | Admin | Who signs the department's replies · short code for outgoing numbers |
+| `GET` `POST` | `/api/register` · `/api/register/{id}` · `/export.csv` | Member | Outgoing register: list/search · one entry · issue by hand · CSV ([docs/REGISTER.md](docs/REGISTER.md)) |
+| `POST` | `/api/register/{id}/sent` · `/cancel` | Member · Desk | Mark as sent `{ via, sentAt?, note? }` · cancel `{ reason }` (number never reused) |
 | `GET` `POST` | `/api/mailbox/status` · `/test` · `/check` | Admin (cookie) | Shared mailbox status · test connection · check now |
 | `GET` `POST` | `/api/mailbox/imports` · `/imports/{id}/retry` | Admin (cookie) | Import log · retry a failed email |
 | `GET` | `/api/documents/{id}/source-email` | Member | The original email a document arrived in |
@@ -349,7 +352,7 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 - [ ] **Microsoft 365 mailbox with OAuth** (Exchange Online no longer allows IMAP passwords).
 - [ ] **Microsoft Teams notifications** as an alternative to email.
 - [ ] **Entra app roles / groups** mapped to Admin, Clerk and Department automatically.
-- [ ] **Outgoing correspondence register** with official numbering.
+- [x] **Outgoing correspondence register** with official numbering ([docs/REGISTER.md](docs/REGISTER.md)).
 
 ### Platform
 - [ ] **Durable background jobs** (Hangfire), so processing survives restarts mid-job.
