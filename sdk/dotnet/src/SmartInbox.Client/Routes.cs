@@ -7,6 +7,8 @@ internal static class Routes
     public static string Document(Guid id) => $"api/documents/{id}";
     public static string DocumentFile(Guid id) => $"api/documents/{id}/file";
     public static string DocumentAction(Guid id, string action) => $"api/documents/{id}/{action}";
+    public static string DocumentRelated(Guid id) => $"api/documents/{id}/related";
+    public static string DocumentRelatedLink(Guid id, long linkId) => $"api/documents/{id}/related/{linkId}";
     public const string Departments = "api/departments";
     public const string Workload = "api/departments/workload";
     public static string Members(int departmentId) => $"api/departments/{departmentId}/members";
@@ -15,6 +17,10 @@ internal static class Routes
     public static string DocumentDrafts(Guid documentId) => $"api/documents/{documentId}/drafts";
     public static string Draft(Guid draftId) => $"api/drafts/{draftId}";
     public static string DraftAction(Guid draftId, string action) => $"api/drafts/{draftId}/{action}";
+    public const string Register = "api/register";
+    public const string RegisterExport = "api/register/export.csv";
+    public static string Outgoing(Guid id) => $"api/register/{id}";
+    public static string OutgoingAction(Guid id, string action) => $"api/register/{id}/{action}";
 
     /// <summary>(method, OpenAPI path template) pairs, for the contract test.</summary>
     public static readonly (string Method, string Template)[] All =
@@ -30,6 +36,8 @@ internal static class Routes
         ("POST", "/api/documents/{id}/reopen"),
         ("POST", "/api/documents/{id}/assign"),
         ("POST", "/api/documents/{id}/comments"),
+        ("GET", "/api/documents/{id}/related"),
+        ("DELETE", "/api/documents/{id}/related/{linkId}"),
         ("GET", "/api/departments/{id}/members"),
         ("GET", "/api/departments"),
         ("GET", "/api/departments/workload"),
@@ -42,5 +50,11 @@ internal static class Routes
         ("POST", "/api/drafts/{draftId}/approve"),
         ("POST", "/api/drafts/{draftId}/reject"),
         ("GET", "/api/drafts/{draftId}/docx"),
+        ("GET", "/api/register"),
+        ("POST", "/api/register"),
+        ("GET", "/api/register/export.csv"),
+        ("GET", "/api/register/{id}"),
+        ("POST", "/api/register/{id}/sent"),
+        ("POST", "/api/register/{id}/cancel"),
     ];
 }

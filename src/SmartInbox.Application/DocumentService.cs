@@ -36,9 +36,21 @@ public class DocumentService(
         Stream content, string fileName, string contentType, string? uploadedBy, CancellationToken ct,
         DocumentSource? source = null, Guid? inboundEmailId = null, string? note = null)
     {
+        if (!content.CanSeek)
+        {
+            var copy = new MemoryStream();
+            await content.CopyToAsync(copy, ct);
+            copy.Position = 0;
+            content = copy;
+        }
+        var start = content.Position;
+        var contentHash = await LetterKeys.HashAsync(content, ct);
+        content.Position = start;
+
         var path = await storage.SaveAsync(content, fileName, ct);
         var doc = new Document
         {
+            ContentHash = contentHash,
             FileName = Path.GetFileName(fileName),
             ContentType = contentType,
             StoragePath = path,
@@ -73,6 +85,8 @@ public class DocumentService(
         if (q.Assigned is { } assigned) query = query.Where(d => d.AssignedDepartmentId == assigned);
         if (q.Handling is { } handling) query = query.Where(d => d.Handling == handling);
         if (q.Source is { } source) query = query.Where(d => d.Source == source);
+        if (q.Related is { } related)
+            query = query.Where(d => db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)) == related);
         if (q.Mine) query = _user.Id is { } me ? query.Where(d => d.AssigneeId == me) : query.Where(d => false);
         if (!string.IsNullOrWhiteSpace(q.Q))
         {
@@ -109,7 +123,9 @@ public class DocumentService(
                 d.Handling,
                 d.AssigneeId,
                 d.AssigneeName,
-                d.Source))
+                d.Source,
+                db.DocumentLinks.Any(l => l.RemovedAt == null && (l.DocumentId == d.Id || l.RelatedDocumentId == d.Id)),
+                db.DocumentLinks.Any(l => l.RemovedAt == null && l.Kind == LinkKind.Duplicate && l.DocumentId == d.Id)))
             .ToListAsync(ct);
 
         return new PagedResult<DocumentListItemDto>(items, total, page, size);
@@ -130,6 +146,8 @@ public class DocumentService(
         var a = d.Analysis;
         var r = d.RoutingDecisions.OrderByDescending(x => x.DecidedAt).FirstOrDefault();
         var email = d.InboundEmailId is { } emailId ? await db.InboundEmails.AsNoTracking().FirstOrDefaultAsync(e => e.Id == emailId, ct) : null;
+        var outgoing = await db.OutgoingLetters.AsNoTracking().Where(l => l.DocumentId == d.Id).OrderBy(l => l.IssuedAt)
+            .Select(l => new OutgoingRefDto(l.Id, l.Number, l.Status, l.IssuedAt)).ToListAsync(ct);
         return new DocumentDetailDto(
             d.Id, d.FileName, d.ContentType, d.Status, d.UploadedAt, d.ExtractedText, d.ErrorMessage,
             a is null ? null : new AnalysisDto(
@@ -147,7 +165,8 @@ public class DocumentService(
             d.Comments.OrderBy(c => c.CreatedAt).ThenBy(c => c.Id).Select(CommentDto.From).ToList(),
             d.Source,
             email is null ? null : new SourceEmailDto(email.Id, email.FromName, email.FromAddress, email.Subject, email.SentAt, email.BodyText,
-                ReplyDraftRules.FromJson(email.SkippedAttachments)));
+                ReplyDraftRules.FromJson(email.SkippedAttachments)),
+            outgoing);
     }
 
     public async Task<(Stream Content, string ContentType, string FileName)?> OpenFileAsync(Guid id, CancellationToken ct)

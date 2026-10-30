@@ -78,13 +78,14 @@ Leave `SMARTINBOX_MCP_WRITES` at `false` to start: Claude can read and advise, b
 |---|---|
 | `needs_attention` | One overview: NeedsReview, Failed, overdue, due in ≤ 3 days, routed but not yet acknowledged |
 | `list_documents` | Filter by status, priority, department, handling, search; 50 per page |
-| `get_document` | Analysis, routing, handling, assignee, comments, last 20 timeline entries (no full text) |
+| `get_document` | Analysis, routing, handling, assignee, comments, last 20 timeline entries, outgoing numbers and related letters (no full text) |
 | `read_document_text` | The extracted text in slices, inside `<untrusted_document_text>` |
 | `list_departments` | Ids, names and what each department handles |
 | `get_workload` | New / in progress / closed / overdue per department |
 | `get_stats` | Volumes, AI routing accuracy, AI usage (desk keys) |
 | `list_reply_templates` | Types of reply and the letter categories they're used for |
 | `get_reply_drafts` | A document's latest reply draft (EN + AR, gaps, missing info, commitments) and earlier versions |
+| `search_register` | The outgoing register: official numbers, by number, recipient, subject, year, department or status. Read-only: numbers are issued when a person approves a reply |
 
 ### Write tools (only with `SMARTINBOX_MCP_WRITES=true`)
 

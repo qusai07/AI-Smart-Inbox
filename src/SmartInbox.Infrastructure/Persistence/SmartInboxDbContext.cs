@@ -21,6 +21,9 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<ReplyDraft> ReplyDrafts => Set<ReplyDraft>();
     public DbSet<InboundEmail> InboundEmails => Set<InboundEmail>();
+    public DbSet<OutgoingLetter> OutgoingLetters => Set<OutgoingLetter>();
+    public DbSet<RegisterCounter> RegisterCounters => Set<RegisterCounter>();
+    public DbSet<DocumentLink> DocumentLinks => Set<DocumentLink>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -56,6 +59,12 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.Property(x => x.Source).HasConversion<string>().HasMaxLength(10).HasDefaultValue(DocumentSource.Upload);
             e.HasIndex(x => x.Source);
             e.HasOne<InboundEmail>().WithMany().HasForeignKey(x => x.InboundEmailId).OnDelete(DeleteBehavior.SetNull);
+            e.Property(x => x.ContentHash).HasMaxLength(64);
+            e.HasIndex(x => x.ContentHash);
+            e.Property(x => x.TextHash).HasMaxLength(64);
+            e.HasIndex(x => x.TextHash);
+            e.Property(x => x.ReferenceKey).HasMaxLength(100);
+            e.HasIndex(x => x.ReferenceKey);
             e.Property(x => x.AssigneeId).HasMaxLength(450);
             e.Property(x => x.AssigneeName).HasMaxLength(200);
             e.HasIndex(x => x.AssigneeId);
@@ -144,6 +153,46 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasOne<WebhookEndpoint>().WithMany().HasForeignKey(x => x.EndpointId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<OutgoingLetter>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(60);
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => new { x.Year, x.Sequence });
+            e.Property(x => x.Recipient).HasMaxLength(300);
+            e.Property(x => x.SubjectEn).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.SubjectAr).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.IssuedBy).HasMaxLength(200);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.SentVia).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.SentNote).HasMaxLength(500);
+            e.Property(x => x.CancelledBy).HasMaxLength(200);
+            e.Property(x => x.CancelReason).HasMaxLength(500);
+            e.HasIndex(x => x.DocumentId);
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<DocumentLink>(e =>
+        {
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Evidence).HasMaxLength(300);
+            e.Property(x => x.RemovedBy).HasMaxLength(200);
+            e.HasIndex(x => new { x.DocumentId, x.RelatedDocumentId }).IsUnique().HasFilter("[RelatedDocumentId] IS NOT NULL");
+            e.HasIndex(x => x.RelatedDocumentId);
+            e.HasIndex(x => x.OutgoingLetterId);
+            e.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
+            // No cascades from the other side: SQL Server allows only one cascade path per table.
+            e.HasOne<Document>().WithMany().HasForeignKey(x => x.RelatedDocumentId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<OutgoingLetter>().WithMany().HasForeignKey(x => x.OutgoingLetterId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        b.Entity<RegisterCounter>(e =>
+        {
+            e.HasIndex(x => new { x.Year, x.Scope }).IsUnique();
+            // Two people issuing at once: the second save fails and is retried with the next number.
+            e.Property(x => x.Next).IsConcurrencyToken();
+        });
+
         b.Entity<InboundEmail>(e =>
         {
             e.Property(x => x.MessageId).HasMaxLength(500);
@@ -157,6 +206,8 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Reason).HasMaxLength(1000);
             e.Property(x => x.DocumentIds).HasMaxLength(2000);
+            e.Property(x => x.InReplyTo).HasMaxLength(500);
+            e.Property(x => x.References).HasMaxLength(4000);
             e.Property(x => x.SkippedAttachments).HasMaxLength(4000);
             e.HasIndex(x => x.ReceivedAt);
         });
@@ -183,6 +234,7 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
 
         b.Entity<Department>(e =>
         {
+            e.Property(x => x.Code).HasMaxLength(10);
             e.Property(x => x.SignatoryNameEn).HasMaxLength(150);
             e.Property(x => x.SignatoryNameAr).HasMaxLength(150);
             e.Property(x => x.SignatoryTitleEn).HasMaxLength(150);

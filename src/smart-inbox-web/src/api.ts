@@ -12,7 +12,7 @@ export const STATUSES: DocumentStatus[] = ['Processing', 'Analyzed', 'NeedsRevie
 export interface DocumentEvent {
   type:
     | 'Uploaded' | 'Analyzed' | 'AnalysisFailed' | 'Routed' | 'Acknowledged' | 'Closed' | 'Reopened' | 'EmailSent' | 'EmailFailed' | 'Escalated' | 'Assigned'
-    | 'DraftRequested' | 'DraftReady' | 'DraftFailed' | 'DraftEdited' | 'DraftApproved' | 'DraftRejected'
+    | 'DraftRequested' | 'DraftReady' | 'DraftFailed' | 'DraftEdited' | 'DraftApproved' | 'DraftRejected' | 'OutgoingIssued' | 'Linked'
   actor: string | null
   departmentId: number | null
   note: string | null
@@ -36,6 +36,8 @@ export interface Department {
   keywords: string | null
   email: string | null
   headEmail: string | null
+  /** Short code used in outgoing numbers, e.g. LEG. */
+  code: string | null
   signatoryNameEn: string | null
   signatoryNameAr: string | null
   signatoryTitleEn: string | null
@@ -60,6 +62,31 @@ export interface DocumentListItem {
   assigneeId: string | null
   assigneeName: string | null
   source: DocumentSource
+  /** Linked to other letters (duplicates, follow-ups, replies, email threads). */
+  hasRelated: boolean
+  /** The same letter was received before. */
+  possibleDuplicate: boolean
+}
+
+export type LinkKind = 'Duplicate' | 'RepliesToOurLetter' | 'EmailThread' | 'FollowUp'
+
+export interface RelatedLetter {
+  linkId: number
+  kind: LinkKind
+  /** Why they're linked, e.g. "Same reference 2027/118 from Demo City Court". */
+  evidence: string | null
+  /** The other letter came first. */
+  earlier: boolean
+  linkedAt: string
+  documentId: string | null
+  fileName: string | null
+  uploadedAt: string | null
+  status: DocumentStatus | null
+  departmentId: number | null
+  handling: HandlingStatus | null
+  sender: string | null
+  outgoingLetterId: string | null
+  outgoingNumber: string | null
 }
 
 export interface Comment {
@@ -134,6 +161,8 @@ export interface DocumentDetail {
   source: DocumentSource
   /** The email it arrived in (sender, subject, covering message), when source is Email. */
   sourceEmail: SourceEmail | null
+  /** Outgoing numbers issued in reply to this document. */
+  outgoing: { id: string; number: string; status: OutgoingStatus; issuedAt: string }[] | null
 }
 
 export interface Paged<T> {
@@ -173,6 +202,7 @@ export interface DocumentFilter {
   mine?: boolean | null
   q?: string
   source?: DocumentSource | null
+  related?: boolean | null
   page?: number
   pageSize?: number
 }
@@ -332,7 +362,47 @@ export interface ReplyDraft {
   decidedBy: string | null
   decidedAt: string | null
   error: string | null
+  /** Set once approving issued our outgoing number. */
+  outgoingNumber: string | null
+  outgoingLetterId: string | null
 }
+
+export type OutgoingStatus = 'Issued' | 'Sent' | 'Cancelled'
+export type SentVia = 'Email' | 'Post' | 'Hand' | 'Other'
+
+export interface OutgoingLetter {
+  id: string
+  number: string
+  year: number
+  sequence: number
+  departmentId: number
+  recipient: string | null
+  subjectEn: string | null
+  subjectAr: string | null
+  documentId: string | null
+  replyDraftId: string | null
+  issuedAt: string
+  issuedBy: string | null
+  status: OutgoingStatus
+  sentAt: string | null
+  sentVia: SentVia | null
+  sentNote: string | null
+  cancelledAt: string | null
+  cancelledBy: string | null
+  cancelReason: string | null
+}
+
+export interface RegisterFilter {
+  year?: number | null
+  department?: number | null
+  status?: OutgoingStatus | null
+  q?: string
+  page?: number
+  pageSize?: number
+}
+
+/** Draft text marker the register replaces with our number on approval. */
+export const NUMBER_MARKERS = ['(issued on approval)', '(يصدر عند الاعتماد)']
 
 export interface ReplyTemplate {
   key: string
@@ -370,13 +440,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const api = {
   departments: () => request<Department[]>('/api/departments'),
 
-  list(filter: DocumentFilter) {
-    const params = new URLSearchParams()
-    for (const [key, value] of Object.entries(filter)) {
-      if (value !== null && value !== undefined && value !== '') params.set(key, String(value))
-    }
-    return request<Paged<DocumentListItem>>(`/api/documents?${params}`)
-  },
+  list: (filter: DocumentFilter) => request<Paged<DocumentListItem>>(`/api/documents?${query(filter)}`),
 
   get: (id: string) => request<DocumentDetail>(`/api/documents/${id}`),
 
@@ -420,6 +484,8 @@ export const api = {
 
   members: (departmentId: number) => request<Member[]>(`/api/departments/${departmentId}/members`),
   assign: (id: string, userId: string | null) => request<void>(`/api/documents/${id}/assign`, json('POST', { userId })),
+  related: (id: string) => request<RelatedLetter[]>(`/api/documents/${id}/related`),
+  removeRelated: (id: string, linkId: number) => request<void>(`/api/documents/${id}/related/${linkId}`, { method: 'DELETE' }),
   comment: (id: string, text: string) => request<Comment>(`/api/documents/${id}/comments`, json('POST', { text })),
 
   // Auth
@@ -468,7 +534,23 @@ export const api = {
   rotateWebhookSecret: (id: number) => request<{ endpoint: WebhookEndpoint; secret: string }>(`/api/webhooks/${id}/rotate-secret`, { method: 'POST' }),
   pingWebhook: (id: number) => request<WebhookDelivery>(`/api/webhooks/${id}/ping`, { method: 'POST' }),
   webhookDeliveries: (id: number, page: number) => request<Paged<WebhookDelivery>>(`/api/webhooks/${id}/deliveries?page=${page}`),
+  setDepartmentCode: (id: number, code: string | null) => request<void>(`/api/departments/${id}/code`, json('PUT', { code })),
+  register: (filter: RegisterFilter) => request<Paged<OutgoingLetter>>(`/api/register?${query(filter)}`),
+  registerCsvUrl: (filter: RegisterFilter) => `/api/register/export.csv?${query({ ...filter, page: undefined, pageSize: undefined })}`,
+  issueOutgoing: (body: { departmentId: number; recipient: string; subjectEn: string | null; subjectAr: string | null; documentId: string | null }) =>
+    request<OutgoingLetter>('/api/register', json('POST', body)),
+  markSent: (id: string, body: { via: SentVia; sentAt: string | null; note: string | null }) =>
+    request<OutgoingLetter>(`/api/register/${id}/sent`, json('POST', body)),
+  cancelOutgoing: (id: string, reason: string) => request<OutgoingLetter>(`/api/register/${id}/cancel`, json('POST', { reason })),
   redeliver: (deliveryId: number) => request<WebhookDelivery>(`/api/webhooks/deliveries/${deliveryId}/redeliver`, { method: 'POST' }),
+}
+
+function query(filter: object) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filter)) {
+    if (value !== null && value !== undefined && value !== '') params.set(key, String(value))
+  }
+  return params
 }
 
 function json(method: string, body: unknown): RequestInit {

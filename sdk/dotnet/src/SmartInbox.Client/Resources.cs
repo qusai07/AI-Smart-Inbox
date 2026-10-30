@@ -92,6 +92,18 @@ public sealed class DocumentsClient
         _client.SendAsync(HttpMethod.Post, Routes.DocumentAction(id, "assign"), new { userId }, ct);
 
     /// <summary>
+    /// Letters this one belongs with — the same letter received before, a follow-up in the same case, a reply to one of
+    /// our letters, the next email in a conversation — each with the reason. Only letters the key may see.
+    /// </summary>
+    public Task<IReadOnlyList<RelatedLetter>> RelatedAsync(Guid id, CancellationToken ct = default) =>
+        _client.GetAsync<IReadOnlyList<RelatedLetter>>(Routes.DocumentRelated(id), ct);
+
+    /// <summary>Removes a wrong link (<see cref="RelatedLetter.LinkId"/>). It won't be found again.</summary>
+    /// <exception cref="SmartInboxNotFoundException">No such link on this document (or it was already removed).</exception>
+    public Task RemoveRelatedAsync(Guid id, long linkId, CancellationToken ct = default) =>
+        _client.SendAsync(HttpMethod.Delete, Routes.DocumentRelatedLink(id, linkId), null, ct);
+
+    /// <summary>
     /// Polls until analysis has finished (Analyzed, NeedsReview, Failed or Routed) and returns the document.
     /// For event-driven code, subscribe to the <c>document.analyzed</c> webhook instead.
     /// </summary>
@@ -126,6 +138,7 @@ public sealed class DocumentsClient
         Add("handling", q.Handling);
         Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
         Add("source", q.Source);
+        Add("related", q.Related?.ToString().ToLowerInvariant());
         if (q.Mine) Add("mine", "true");
         Add("page", q.Page);
         Add("pageSize", q.PageSize);
@@ -167,7 +180,7 @@ public sealed class StatsClient
 
 /// <summary>
 /// Bilingual reply drafts. Smart Inbox prepares a draft from a template in the background; a person fills the [●]
-/// gaps, saves (a new version) and approves. Approval is meant for people: Smart Inbox never sends anything.
+/// gaps, saves (a new version) and approves; approving issues our outgoing number from the register. Approval is meant for people: Smart Inbox never sends anything.
 /// </summary>
 public sealed class DraftsClient
 {
@@ -234,4 +247,80 @@ public sealed class DraftsClient
     }
 
     private static HttpContent Json(object body) => System.Net.Http.Json.JsonContent.Create(body, options: SmartInboxClient.Json);
+}
+
+/// <summary>
+/// The outgoing register. Replies get their number when approved; register other letters with <see cref="IssueAsync"/>.
+/// Desk keys see every department, Department keys their own.
+/// </summary>
+public sealed class RegisterClient
+{
+    private readonly SmartInboxClient _client;
+
+    internal RegisterClient(SmartInboxClient client) => _client = client;
+
+    /// <summary>One page of the register, newest number first.</summary>
+    public Task<Page<OutgoingLetter>> ListAsync(RegisterQuery? query = null, CancellationToken ct = default) =>
+        _client.GetAsync<Page<OutgoingLetter>>($"{Routes.Register}?{QueryString(query ?? new RegisterQuery())}", ct);
+
+    /// <summary>Every matching entry, newest first, fetching pages as you enumerate.</summary>
+    public async IAsyncEnumerable<OutgoingLetter> ListAllAsync(RegisterQuery? query = null, [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        query ??= new RegisterQuery();
+        for (var page = 1; ; page++)
+        {
+            var result = await ListAsync(query with { Page = page }, ct).ConfigureAwait(false);
+            foreach (var item in result.Items) yield return item;
+            if (!result.HasMore || result.Items.Count == 0) yield break;
+        }
+    }
+
+    /// <summary>One entry.</summary>
+    /// <exception cref="SmartInboxNotFoundException">It doesn't exist, or belongs to another department.</exception>
+    public Task<OutgoingLetter> GetAsync(Guid id, CancellationToken ct = default) =>
+        _client.GetAsync<OutgoingLetter>(Routes.Outgoing(id), ct);
+
+    /// <summary>Issues the next number for a letter written outside Smart Inbox (or one that isn't a reply). Never retried automatically.</summary>
+    public Task<OutgoingLetter> IssueAsync(NewOutgoingLetter letter, CancellationToken ct = default) =>
+        _client.SendAsync<OutgoingLetter>(HttpMethod.Post, Routes.Register, Json(letter), ct);
+
+    /// <summary>Records how and when the letter was sent (default: now).</summary>
+    /// <exception cref="SmartInboxConflictException">The number was cancelled.</exception>
+    public Task<OutgoingLetter> MarkSentAsync(Guid id, SentVia via, DateTime? sentAt = null, string? note = null, CancellationToken ct = default) =>
+        _client.SendAsync<OutgoingLetter>(HttpMethod.Post, Routes.OutgoingAction(id, "sent"), Json(new { via, sentAt, note }), ct);
+
+    /// <summary>Cancels a number (desk keys only). It stays in the register with the reason and is never issued again.</summary>
+    /// <exception cref="SmartInboxConflictException">Already cancelled.</exception>
+    public Task<OutgoingLetter> CancelAsync(Guid id, string reason, CancellationToken ct = default) =>
+        _client.SendAsync<OutgoingLetter>(HttpMethod.Post, Routes.OutgoingAction(id, "cancel"), Json(new { reason }), ct);
+
+    /// <summary>The matching entries as CSV (UTF-8, up to 10,000 rows). Dispose <see cref="DocumentFile.Content"/> when done.</summary>
+    public async Task<DocumentFile> ExportCsvAsync(RegisterQuery? query = null, CancellationToken ct = default)
+    {
+        using var response = await _client.GetRawAsync($"{Routes.RegisterExport}?{QueryString(query ?? new RegisterQuery())}", ct).ConfigureAwait(false);
+        var buffer = new MemoryStream();
+        await response.Content.CopyToAsync(buffer, ct).ConfigureAwait(false);
+        buffer.Position = 0;
+        return new DocumentFile(buffer,
+            response.Content.Headers.ContentType?.MediaType ?? "text/csv",
+            response.Content.Headers.ContentDisposition?.FileNameStar ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+    }
+
+    private static HttpContent Json(object body) => System.Net.Http.Json.JsonContent.Create(body, options: SmartInboxClient.Json);
+
+    internal static string QueryString(RegisterQuery q)
+    {
+        var parts = new List<string>();
+        void Add(string key, object? value)
+        {
+            if (value is not null) parts.Add($"{key}={Uri.EscapeDataString(value.ToString()!)}");
+        }
+        Add("year", q.Year);
+        Add("department", q.Department);
+        Add("status", q.Status);
+        Add("q", string.IsNullOrWhiteSpace(q.Search) ? null : q.Search);
+        Add("page", q.Page);
+        Add("pageSize", q.PageSize);
+        return string.Join('&', parts);
+    }
 }

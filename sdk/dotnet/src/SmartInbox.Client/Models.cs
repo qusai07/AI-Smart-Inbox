@@ -29,14 +29,16 @@ public sealed record DocumentSummary(
     Guid Id, string FileName, DocumentStatus Status, DateTime UploadedAt,
     string? SummaryEn, string? SummaryAr, DocumentCategory? Category, Priority? Priority, string? Sender,
     DateOnly? Deadline, int? SuggestedDepartmentId, int? FinalDepartmentId, double? Confidence,
-    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload);
+    HandlingStatus? Handling, string? AssigneeId, string? AssigneeName, DocumentSource Source = DocumentSource.Upload,
+    bool HasRelated = false, bool PossibleDuplicate = false);
 
 /// <summary>A document with its analysis, routing, handling and timeline.</summary>
 public sealed record DocumentDetail(
     Guid Id, string FileName, string ContentType, DocumentStatus Status, DateTime UploadedAt,
     string? ExtractedText, string? ErrorMessage, Analysis? Analysis, IReadOnlyList<ActionItem> ActionItems,
     RoutingDecision? Routing, Handling? Handling, IReadOnlyList<TimelineEntry> Timeline,
-    Assignee? Assignee, IReadOnlyList<Comment> Comments, DocumentSource Source = DocumentSource.Upload, SourceEmail? SourceEmail = null)
+    Assignee? Assignee, IReadOnlyList<Comment> Comments, DocumentSource Source = DocumentSource.Upload, SourceEmail? SourceEmail = null,
+    IReadOnlyList<OutgoingRef>? Outgoing = null)
 {
     /// <summary>True once analysis has finished (successfully or not).</summary>
     public bool IsAnalysisComplete => Status is not (DocumentStatus.Uploaded or DocumentStatus.Processing);
@@ -63,7 +65,7 @@ public sealed record Comment(long Id, string? AuthorId, string AuthorName, strin
 /// <summary>A staff member who can be assigned documents.</summary>
 public sealed record Member(string Id, string DisplayName);
 
-public sealed record Department(int Id, string NameEn, string NameAr, string? Description, string? Keywords, string? Email, string? HeadEmail);
+public sealed record Department(int Id, string NameEn, string NameAr, string? Description, string? Keywords, string? Email, string? HeadEmail, string? Code = null);
 
 public sealed record DepartmentWorkload(int DepartmentId, int New, int Acknowledged, int Closed, int Overdue);
 
@@ -86,13 +88,15 @@ public enum DraftStatus { Requested, Generating, Ready, Approved, Rejected, Fail
 
 /// <summary>
 /// A reply letter in English and Arabic. Every edit is a new version. <see cref="Placeholders"/> counts the [●] gaps
-/// a person must fill before it can be approved. Nothing is ever sent by Smart Inbox.
+/// a person must fill before it can be approved. Our outgoing number shows as "(issued on approval)" and is set by the
+/// register when the draft is approved (<see cref="OutgoingNumber"/>). Nothing is ever sent by Smart Inbox.
 /// </summary>
 public sealed record ReplyDraft(
     Guid Id, Guid DocumentId, int Version, bool IsLatest, DraftStatus Status, string? TemplateKey, string? Engine,
     string? Instructions, string? SubjectEn, string? BodyEn, string? SubjectAr, string? BodyAr,
     IReadOnlyList<string> MissingInfo, IReadOnlyList<string> Commitments, int Placeholders,
-    string? RequestedBy, DateTime CreatedAt, string? EditedBy, DateTime? EditedAt, string? DecidedBy, DateTime? DecidedAt, string? Error)
+    string? RequestedBy, DateTime CreatedAt, string? EditedBy, DateTime? EditedAt, string? DecidedBy, DateTime? DecidedAt, string? Error,
+    string? OutgoingNumber = null, Guid? OutgoingLetterId = null)
 {
     /// <summary>True once the background preparation has finished (ready, or failed).</summary>
     public bool IsPrepared => Status is not (DraftStatus.Requested or DraftStatus.Generating);
@@ -103,6 +107,34 @@ public sealed record ReplyTemplate(string Key, string NameEn, string NameAr, IRe
 
 /// <summary>New text for a draft, in both languages. Saving it creates a new version.</summary>
 public sealed record ReplyText(string SubjectEn, string BodyEn, string SubjectAr, string BodyAr);
+
+/// <summary>Why two letters are related, strongest first.</summary>
+public enum LinkKind { Duplicate, RepliesToOurLetter, EmailThread, FollowUp }
+
+/// <summary>
+/// A letter related to the one asked about, and why (<see cref="Evidence"/>). <see cref="DocumentId"/> is null when the
+/// letter only quotes one of our outgoing letters that was registered by hand (<see cref="OutgoingNumber"/>).
+/// </summary>
+public sealed record RelatedLetter(
+    long LinkId, LinkKind Kind, string? Evidence, bool Earlier, DateTime LinkedAt,
+    Guid? DocumentId, string? FileName, DateTime? UploadedAt, DocumentStatus? Status, int? DepartmentId, HandlingStatus? Handling, string? Sender,
+    Guid? OutgoingLetterId, string? OutgoingNumber);
+
+public enum OutgoingStatus { Issued, Sent, Cancelled }
+
+public enum SentVia { Email, Post, Hand, Other }
+
+/// <summary>An entry in the outgoing register: a letter with its official number. Numbers are never reused.</summary>
+public sealed record OutgoingLetter(
+    Guid Id, string Number, int Year, int Sequence, int DepartmentId, string? Recipient, string? SubjectEn, string? SubjectAr,
+    Guid? DocumentId, Guid? ReplyDraftId, DateTime IssuedAt, string? IssuedBy, OutgoingStatus Status,
+    DateTime? SentAt, SentVia? SentVia, string? SentNote, DateTime? CancelledAt, string? CancelledBy, string? CancelReason);
+
+/// <summary>An outgoing number issued in reply to a document.</summary>
+public sealed record OutgoingRef(Guid Id, string Number, OutgoingStatus Status, DateTime IssuedAt);
+
+/// <summary>A letter to register by hand: recipient and a subject in at least one language.</summary>
+public sealed record NewOutgoingLetter(int DepartmentId, string Recipient, string? SubjectEn, string? SubjectAr, Guid? DocumentId = null);
 
 /// <summary>A downloaded original file.</summary>
 public sealed record DocumentFile(Stream Content, string ContentType, string? FileName);
@@ -126,10 +158,29 @@ public sealed record DocumentListQuery
     public bool Mine { get; init; }
     /// <summary>Only documents that came in this way (e.g. <see cref="DocumentSource.Email"/>).</summary>
     public DocumentSource? Source { get; init; }
+    /// <summary>Only letters with related letters (true) or without (false).</summary>
+    public bool? Related { get; init; }
     /// <summary>Free-text search over file name, text, summaries, sender and reference.</summary>
     public string? Search { get; init; }
     /// <summary>1-based page for <see cref="DocumentsClient.ListAsync"/>; ignored by <see cref="DocumentsClient.ListAllAsync"/>.</summary>
     public int Page { get; init; } = 1;
     /// <summary>Items per page, 1–100.</summary>
+    public int PageSize { get; init; } = 50;
+}
+
+/// <summary>Filters for the outgoing register. Unset properties don't filter.</summary>
+public sealed record RegisterQuery
+{
+    /// <summary>Only numbers issued in this year.</summary>
+    public int? Year { get; init; }
+    /// <summary>Only this department's letters.</summary>
+    public int? Department { get; init; }
+    /// <summary>Only letters in this state.</summary>
+    public OutgoingStatus? Status { get; init; }
+    /// <summary>Search number, recipient and subjects.</summary>
+    public string? Search { get; init; }
+    /// <summary>1-based page for <see cref="RegisterClient.ListAsync"/>; ignored by <see cref="RegisterClient.ListAllAsync"/>.</summary>
+    public int Page { get; init; } = 1;
+    /// <summary>Items per page, 1–500.</summary>
     public int PageSize { get; init; } = 50;
 }

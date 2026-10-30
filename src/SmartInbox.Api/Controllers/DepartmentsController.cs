@@ -10,6 +10,8 @@ namespace SmartInbox.Api.Controllers;
 
 public record UpdateDepartmentContactsRequest(string? Email, string? HeadEmail);
 
+public record UpdateDepartmentCodeRequest(string? Code);
+
 public record UpdateSignatoryRequest(string? NameEn, string? NameAr, string? TitleEn, string? TitleAr);
 
 [ApiController]
@@ -59,6 +61,24 @@ public class DepartmentsController(IAppDbContext db, DocumentService documents) 
         department.SignatoryNameAr = Normalize(request.NameAr);
         department.SignatoryTitleEn = Normalize(request.TitleEn);
         department.SignatoryTitleAr = Normalize(request.TitleAr);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>The short code used in outgoing numbers ({Dept}), e.g. LEG. Letters and digits, unique.</summary>
+    [HttpPut("{id:int}/code")]
+    [Authorize(Policy = Policies.Admin)]
+    public async Task<IActionResult> SetCode(int id, UpdateDepartmentCodeRequest request, CancellationToken ct)
+    {
+        var code = Normalize(request.Code)?.ToUpperInvariant();
+        if (code is not null && (code.Length > 10 || !code.All(char.IsAsciiLetterOrDigit)))
+            return Problem("A code is up to 10 letters or digits, e.g. LEG.", statusCode: 400);
+
+        var department = await db.Departments.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (department is null) return NotFound();
+        if (code is not null && await db.Departments.AnyAsync(d => d.Id != id && d.Code == code, ct))
+            return Problem($"Another department already uses {code}.", statusCode: 409);
+        department.Code = code;
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

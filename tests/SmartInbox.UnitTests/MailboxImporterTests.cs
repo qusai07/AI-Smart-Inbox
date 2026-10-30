@@ -27,6 +27,15 @@ internal class FakeMailbox : IMailboxClient
         return uid;
     }
 
+    /// <summary>A reply in a conversation: In-Reply-To and References point at earlier emails.</summary>
+    public uint AddReply(string subject, string body, string inReplyTo, params string[] references)
+    {
+        var uid = Add(subject, body);
+        var i = _folder.FindIndex(m => m.Uid == uid);
+        _folder[i] = _folder[i] with { InReplyTo = inReplyTo, References = [.. references, inReplyTo] };
+        return uid;
+    }
+
     private readonly HashSet<uint> _hiddenIds = [];
 
     public Task<IReadOnlyList<MailboxItem>> ListPendingAsync(int max, CancellationToken ct) =>

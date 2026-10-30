@@ -7,7 +7,7 @@ import Dialog from 'primevue/dialog'
 import { useAuth } from '../stores/auth'
 
 /** Bump when there's a new set of features to announce: everyone sees the window once more. */
-const RELEASE = '2026-11'
+const RELEASE = '2027-01'
 
 const { t } = useI18n()
 const auth = useAuth()
@@ -44,7 +44,10 @@ watch(
 type Item = { key: string; icon: string; tone?: string; to?: RouteLocationRaw }
 
 const items = computed<Item[]>(() => {
-  const list: Item[] = []
+  const list: Item[] = [
+    { key: 'related', icon: 'pi pi-link', to: auth.isDesk ? { name: 'inbox', query: { related: 'true' } } : auth.home },
+    { key: 'register', icon: 'pi pi-hashtag', to: { name: 'register' } },
+  ]
   if (auth.isAdmin) list.push({ key: 'mailbox', icon: 'pi pi-envelope', to: { name: 'admin', hash: '#mailbox' } })
   else if (auth.isDesk) list.push({ key: 'mailboxDesk', icon: 'pi pi-envelope', to: { name: 'inbox', query: { source: 'Email' } } })
   list.push({ key: 'replies', icon: 'pi pi-pen-to-square', to: auth.home })

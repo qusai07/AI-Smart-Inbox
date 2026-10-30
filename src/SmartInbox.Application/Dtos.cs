@@ -19,7 +19,9 @@ public record DocumentListItemDto(
     HandlingStatus? Handling,
     string? AssigneeId,
     string? AssigneeName,
-    DocumentSource Source = DocumentSource.Upload);
+    DocumentSource Source = DocumentSource.Upload,
+    bool HasRelated = false,
+    bool PossibleDuplicate = false);
 
 public record DocumentDetailDto(
     Guid Id,
@@ -38,7 +40,11 @@ public record DocumentDetailDto(
     AssigneeDto? Assignee,
     IReadOnlyList<CommentDto> Comments,
     DocumentSource Source = DocumentSource.Upload,
-    SourceEmailDto? SourceEmail = null);
+    SourceEmailDto? SourceEmail = null,
+    IReadOnlyList<OutgoingRefDto>? Outgoing = null);
+
+/// <summary>An outgoing number issued for (in reply to) this document.</summary>
+public record OutgoingRefDto(Guid Id, string Number, OutgoingStatus Status, DateTime IssuedAt);
 
 /// <summary>The email a document arrived in: who sent it and the covering message.</summary>
 public record SourceEmailDto(Guid Id, string? FromName, string? FromAddress, string? Subject, DateTime? SentAt, string? BodyText,
@@ -108,7 +114,9 @@ public record DocumentQuery(
     string? Q = null,
     DocumentSource? Source = null,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    /// <summary>Only letters with related letters (true) or without (false).</summary>
+    bool? Related = null);
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 

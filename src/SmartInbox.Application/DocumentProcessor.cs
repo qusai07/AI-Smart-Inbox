@@ -12,12 +12,17 @@ public class DocumentProcessor(
     IAiProvider ai,
     IInboxNotifier notifier,
     ILogger<DocumentProcessor> logger,
-    IWebhookPublisher? webhooks = null)
+    IWebhookPublisher? webhooks = null,
+    RelatedLetterFinder? related = null,
+    NotificationOptions? links = null)
 {
     private readonly IWebhookPublisher _webhooks = webhooks ?? NullWebhookPublisher.Instance;
 
     /// <summary>Below this confidence the document goes to the Needs Review queue.</summary>
     public const double ConfidenceThreshold = 0.6;
+
+    /// <summary>Confidence given to "earlier letters in this case went to X" when it replaces an unsure suggestion.</summary>
+    public const double CaseConfidence = 0.8;
 
     public async Task ProcessAsync(Guid documentId, CancellationToken ct)
     {
@@ -39,6 +44,7 @@ public class DocumentProcessor(
                 doc.ExtractedText = result.ExtractedText;
 
             ApplyResult(doc, result, departments);
+            await LinkRelatedAsync(doc, departments, ct);
             doc.ErrorMessage = null;
             db.DocumentEvents.Add(new DocumentEvent
             {
@@ -60,6 +66,50 @@ public class DocumentProcessor(
             db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.AnalysisFailed, Actor = "system", Note = doc.ErrorMessage });
             var routed = await db.RoutingDecisions.AnyAsync(r => r.DocumentId == doc.Id, ct);
             await SetStatusAsync(doc, routed ? DocumentStatus.Routed : DocumentStatus.Failed, ct, WebhookEvents.DocumentAnalysisFailed, "system");
+        }
+    }
+
+    /// <summary>
+    /// Links the letter to the ones it belongs with (saved with the analysis) and, when the case already has a
+    /// department and the analysis is unsure, suggests that department. A failure here never fails the analysis.
+    /// </summary>
+    private async Task LinkRelatedAsync(Document doc, IReadOnlyList<Department> departments, CancellationToken ct)
+    {
+        if (related is null) return;
+        try
+        {
+            var added = await related.LinkAsync(doc.Id, ct);
+            foreach (var link in added)
+            {
+                db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.Linked, Actor = "Smart Inbox", Note = link.Evidence });
+                await _webhooks.PublishAsync(WebhookEvents.DocumentLinked,
+                    new WebhookLinkData(link.DocumentId, link.RelatedDocumentId, link.OutgoingLetterId, link.Kind,
+                        links is null ? null : $"{links.AppBaseUrl.TrimEnd('/')}/documents/{doc.Id}"),
+                    Audience.Of(doc.AssignedDepartmentId), ct);
+            }
+
+            if (await related.CaseDepartmentAsync(doc.Id, added, ct) is not { } caseDepartment
+                || departments.FirstOrDefault(d => d.Id == caseDepartment) is not { } department) return;
+            var a = doc.Analysis!;
+            var because = $"Earlier letters in this case went to {department.NameEn}.";
+            if (a.SuggestedDepartmentId == caseDepartment)
+            {
+                a.Reasoning = $"{a.Reasoning} {because}".Trim();
+            }
+            else if (a.SuggestedDepartmentId is null || a.Confidence < ConfidenceThreshold)
+            {
+                a.SuggestedDepartmentId = caseDepartment;
+                a.Confidence = Math.Max(a.Confidence, CaseConfidence);
+                a.Reasoning = $"{because} {a.Reasoning}".Trim();
+            }
+            else
+            {
+                a.Reasoning = $"{a.Reasoning} {because}".Trim(); // the analysis is confident about another one: the desk decides
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Finding related letters failed for document {DocumentId}", doc.Id);
         }
     }
 

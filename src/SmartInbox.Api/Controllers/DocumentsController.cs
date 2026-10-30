@@ -130,6 +130,16 @@ public class DocumentsController(DocumentService documents) : ControllerBase
             _ => Problem("That person is not staff of this document's department.", statusCode: 400),
         };
 
+    /// <summary>Letters this one belongs with (duplicates, follow-ups, replies to our letters, email threads), and why.</summary>
+    [HttpGet("{id:guid}/related")]
+    public async Task<ActionResult<IReadOnlyList<RelatedLetterDto>>> Related(Guid id, [FromServices] RelatedLetterService related, CancellationToken ct) =>
+        await related.ListAsync(id, ct) is { } list ? Ok(list) : NotFound();
+
+    /// <summary>Removes a wrong link; it won't be found again.</summary>
+    [HttpDelete("{id:guid}/related/{linkId:long}")]
+    public async Task<IActionResult> RemoveRelated(Guid id, long linkId, [FromServices] RelatedLetterService related, CancellationToken ct) =>
+        await related.RemoveAsync(id, linkId, ct) == RelatedLetterService.RemoveOutcome.Removed ? NoContent() : NotFound();
+
     [HttpPost("{id:guid}/comments")]
     public async Task<ActionResult<CommentDto>> Comment(
         Guid id, CommentRequest request, IValidator<CommentRequest> validator, [FromServices] CollaborationService collaboration, CancellationToken ct)

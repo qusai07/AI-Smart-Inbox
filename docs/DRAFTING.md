@@ -7,7 +7,7 @@ Smart Inbox prepares the **formal reply** to a routed letter in **English and Ar
 1. Open a routed document and click **Draft reply** (Reply panel). Pick a type of reply, or leave **Automatic** to choose by the letter's category. Optional notes stay with the draft.
 2. In about a second the draft appears: English and Arabic side by side.
 3. Fill every `[●]` (the panel counts them and lists what's missing) and **Save changes** — each save is a new version; the original is kept.
-4. **Approve** (only possible when no `[●]` is left and both languages are filled), then **Download Word** or copy the text.
+4. **Approve** (only possible when no `[●]` is left and both languages are filled). Approving issues the **outgoing number** from the register and writes it into both letters, then **Download Word** or copy the text.
 
 Who can draft and approve: the correspondence desk, or staff of the department the letter is routed to — the same people who handle the document. Every step is on the document's timeline.
 
@@ -24,7 +24,7 @@ Who can draft and approve: the correspondence desk, or staff of the department t
 | General reply | Other | The reply to what they asked |
 | Decline an invitation · Ask for more information · Reply to a thank-you letter | (pick manually) | Information needed (request info) |
 
-Every draft also leaves **our outgoing reference number** as `[●]` until an outgoing register exists.
+**Our outgoing reference number** is not a gap: the draft shows *(issued on approval)* / *(يصدر عند الاعتماد)* and the register replaces it with the next number (e.g. `MDS/OUT/2026/0042`) in the same save as the approval. If a person types a number there instead, none is issued.
 
 **Filled in automatically:** sender, their reference number and date (worded naturally when either is missing: "your letter dated 3 February 2027", «خطابكم المؤرخ في 3 فبراير 2027»), deadline, the replying department and its signatory title (*Administration → departments*, `PUT /api/departments/{id}/signatory`), the organisation name (`Drafting:OrganisationNameEn/Ar`), and today's date — in Arabic with the Hijri equivalent.
 
@@ -46,5 +46,6 @@ Rerun the measurement: `dotnet run --project tests/SmartInbox.AiEvals -c Release
 | SDK (0.3.0) | `inbox.Drafts.RequestAsync`, `WaitForDraftAsync`, `UpdateAsync`, `ApproveAsync`, `RejectAsync`, `DownloadDocxAsync`, `ListTemplatesAsync` |
 | Webhooks | `draft.ready`, `draft.approved` (ids only, never the letter text) |
 | MCP | `draft_reply` (write), `get_reply_drafts`, `list_reply_templates` — **no approve tool**: approval is a person's decision in the web app |
+| Outgoing number | Issued by the register on approval ([REGISTER.md](REGISTER.md)) |
 
 Settings: `Drafting:Enabled` (default `true`), `Drafting:OrganisationNameEn`, `Drafting:OrganisationNameAr`.

@@ -55,7 +55,8 @@ public record MailAttachment(string FileName, byte[] Content);
 /// </summary>
 public record MailMessage(
     uint Uid, string MessageId, string? FromName, string? FromAddress, string? Subject, DateTimeOffset? Date,
-    string? BodyText, bool IsAutoReply, IReadOnlyList<MailAttachment> Attachments, byte[] Raw);
+    string? BodyText, bool IsAutoReply, IReadOnlyList<MailAttachment> Attachments, byte[] Raw,
+    string? InReplyTo = null, IReadOnlyList<string>? References = null);
 
 public record MailboxTestResult(bool Ok, int? Pending, string Message);
 
@@ -154,6 +155,8 @@ public class MailboxImporter(
         email.Subject = Limit(m.Subject, 500);
         email.SentAt = m.Date?.UtcDateTime;
         email.BodyText = Limit(m.BodyText?.Trim(), MailboxRules.MaxBodyText);
+        email.InReplyTo = Limit(m.InReplyTo, 500);
+        email.References = m.References is { Count: > 0 } refs ? Limit(string.Join(' ', refs.TakeLast(20)), 4000) : null;
         email.Attempts++;
 
         string? skipReason = m.IsAutoReply ? MailboxRules.AutoReplySkipped

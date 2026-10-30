@@ -37,7 +37,7 @@ Create the key in Smart Inbox under **Administration → API keys**. Give it a n
 
 | Read (always on) | Write (only with `SMARTINBOX_MCP_WRITES=true`) |
 |---|---|
-| `needs_attention`, `list_documents`, `get_document`, `read_document_text`, `list_departments`, `get_workload`, `get_stats`, `list_reply_templates`, `get_reply_drafts` | `route_document`, `acknowledge_document`, `close_document`, `reopen_document`, `reanalyze_document`, `add_comment`, `submit_text`, `draft_reply` (no approve tool: people approve in the web app) |
+| `needs_attention`, `list_documents`, `get_document`, `read_document_text`, `list_departments`, `get_workload`, `get_stats`, `list_reply_templates`, `get_reply_drafts`, `search_register` | `route_document`, `acknowledge_document`, `close_document`, `reopen_document`, `reanalyze_document`, `add_comment`, `submit_text`, `draft_reply` (no approve tool: people approve in the web app) |
 
 Plus resources (`smartinbox://documents/{id}`, `.../text`, `smartinbox://departments`) and prompts (`triage_inbox`, `daily_briefing`, `explain_document`).
 

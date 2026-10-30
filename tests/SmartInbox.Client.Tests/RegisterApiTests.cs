@@ -1,0 +1,141 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using SmartInbox.Client.Webhooks;
+
+namespace SmartInbox.Client.Tests;
+
+/// <summary>The outgoing register through the real API (the SDK gets a Register client in 0.5.0).</summary>
+[Collection(ServerCollection.Name)]
+public class RegisterApiTests(SmartInboxFactory server)
+{
+    private async Task<HttpClient> HttpAsync(string role, int? departmentId = null)
+    {
+        var (_, key) = await server.CreateKeyAsync(role, departmentId);
+        var http = server.CreateClient(new() { HandleCookies = false });
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        return http;
+    }
+
+    [Fact]
+    public async Task Issue_Find_MarkSent_Cancel_Export()
+    {
+        using var desk = await HttpAsync("Clerk");
+        var created = await desk.PostAsJsonAsync("api/register",
+            new { departmentId = 3, recipient = "Nimbus Cloud Services", subjectEn = "Invoice NCS-88213 query", subjectAr = "استفسار عن الفاتورة" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var letter = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = letter.GetProperty("id").GetGuid();
+        var number = letter.GetProperty("number").GetString()!;
+        Assert.Matches(@"^MDS/OUT/\d{4}/\d{4}$", number);
+
+        var found = await desk.GetFromJsonAsync<JsonElement>($"api/register?q={Uri.EscapeDataString("NCS-88213")}");
+        Assert.Contains(found.GetProperty("items").EnumerateArray(), l => l.GetProperty("id").GetGuid() == id);
+
+        var sent = await desk.PostAsJsonAsync($"api/register/{id}/sent", new { via = "Email", note = "accounts@nimbus.example" });
+        Assert.Equal("Sent", (await sent.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+
+        var noReason = await desk.PostAsJsonAsync($"api/register/{id}/cancel", new { reason = "" });
+        Assert.Equal(HttpStatusCode.BadRequest, noReason.StatusCode);
+        var cancelled = await desk.PostAsJsonAsync($"api/register/{id}/cancel", new { reason = "Sent to the wrong address" });
+        Assert.Equal("Cancelled", (await cancelled.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.Conflict, (await desk.PostAsJsonAsync($"api/register/{id}/cancel", new { reason = "again" })).StatusCode);
+
+        var csv = await desk.GetAsync("api/register/export.csv");
+        Assert.Equal("text/csv", csv.Content.Headers.ContentType!.MediaType);
+        var text = await csv.Content.ReadAsStringAsync();
+        Assert.Contains(number, text);
+        Assert.Contains("Sent to the wrong address", text);
+        Assert.Contains("استفسار عن الفاتورة", text);
+    }
+
+    [Fact]
+    public async Task Sdk_Issue_List_MarkSent_Export_Cancel()
+    {
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        var inbox = server.Sdk(key);
+
+        var issued = await inbox.Register.IssueAsync(new NewOutgoingLetter(6, "Citizen Ahmed", "Your complaint CX-77", "بشأن شكواكم CX-77"));
+        Assert.Equal(OutgoingStatus.Issued, issued.Status);
+        Assert.Equal("API key: Clerk test key", issued.IssuedBy);
+
+        var found = new List<OutgoingLetter>();
+        await foreach (var l in inbox.Register.ListAllAsync(new RegisterQuery { Search = "CX-77", Department = 6 })) found.Add(l);
+        Assert.Equal(issued.Id, Assert.Single(found).Id);
+
+        var sent = await inbox.Register.MarkSentAsync(issued.Id, SentVia.Hand, note: "Front desk");
+        Assert.Equal(SentVia.Hand, sent.SentVia);
+
+        using var csv = (await inbox.Register.ExportCsvAsync(new RegisterQuery { Search = "CX-77" })).Content;
+        Assert.Contains(issued.Number, await new StreamReader(csv).ReadToEndAsync());
+
+        var cancelled = await inbox.Register.CancelAsync(issued.Id, "Duplicate");
+        Assert.Equal("Duplicate", cancelled.CancelReason);
+        await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Register.CancelAsync(issued.Id, "again"));
+        await Assert.ThrowsAsync<SmartInboxConflictException>(() => inbox.Register.MarkSentAsync(issued.Id, SentVia.Post));
+    }
+
+    [Fact]
+    public void RegisterIssuedWebhook_ParsesToATypedEvent()
+    {
+        const string body = """{"id":"evt_12","type":"register.issued","createdAt":"2026-10-30T09:00:00Z","apiVersion":"2026-11-01","data":{"outgoingLetterId":"0b7f2a7e-0000-4000-8000-000000000002","number":"MDS/OUT/2026/0042","departmentId":2,"documentId":"8f3c6a1e-0000-4000-8000-000000000001","replyDraftId":null,"issuedBy":"Sara","url":"https://inbox.example.com/documents/8f3c6a1e-0000-4000-8000-000000000001"}}""";
+
+        var evt = Assert.IsType<RegisterIssuedEvent>(WebhookVerifier.Parse(body));
+
+        Assert.Equal("MDS/OUT/2026/0042", evt.Data.Number);
+        Assert.Equal(2, evt.Data.DepartmentId);
+        Assert.Null(evt.Data.ReplyDraftId);
+    }
+
+    [Fact]
+    public async Task IssuedForADocument_ShowsOnTheDocument()
+    {
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        var doc = await server.Sdk(key).Documents.UploadTextAsync("A letter we answer outside Smart Inbox.");
+        using var desk = await HttpAsync("Clerk");
+        var number = (await (await desk.PostAsJsonAsync("api/register",
+            new { departmentId = 5, recipient = "Partner agency", subjectEn = "Our answer", documentId = doc.Id })).Content
+            .ReadFromJsonAsync<JsonElement>()).GetProperty("number").GetString();
+
+        var detail = await desk.GetFromJsonAsync<JsonElement>($"api/documents/{doc.Id}");
+        var outgoing = Assert.Single(detail.GetProperty("outgoing").EnumerateArray());
+        Assert.Equal(number, outgoing.GetProperty("number").GetString());
+        Assert.Contains(detail.GetProperty("timeline").EnumerateArray(), e => e.GetProperty("type").GetString() == "OutgoingIssued");
+    }
+
+    [Fact]
+    public async Task DepartmentCode_AdminSetsIt_Validated_AndUnique()
+    {
+        using var admin = await server.AdminAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "ST R" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "leg" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = " plan " })).StatusCode);
+        var departments = await admin.GetFromJsonAsync<JsonElement>("api/departments");
+        Assert.Equal("PLAN", departments.EnumerateArray().Single(d => d.GetProperty("id").GetInt32() == 7).GetProperty("code").GetString());
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("api/departments/7/code", new { code = "STR" })).StatusCode);
+
+        using var clerk = await HttpAsync("Clerk");
+        Assert.Equal(HttpStatusCode.Forbidden, (await clerk.PutAsJsonAsync("api/departments/7/code", new { code = "X" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task DepartmentStaff_OwnDepartmentOnly_AndCantCancel()
+    {
+        using var desk = await HttpAsync("Clerk");
+        var hrLetter = await (await desk.PostAsJsonAsync("api/register",
+            new { departmentId = 4, recipient = "Applicant", subjectEn = "Your application" })).Content.ReadFromJsonAsync<JsonElement>();
+
+        using var legal = await HttpAsync("Department", departmentId: 2);
+        Assert.Equal(HttpStatusCode.Forbidden, (await legal.PostAsJsonAsync("api/register",
+            new { departmentId = 4, recipient = "Applicant", subjectEn = "x" })).StatusCode);
+        var own = await legal.PostAsJsonAsync("api/register", new { departmentId = 2, recipient = "Demo City Court", subjectEn = "Defence memorandum" });
+        Assert.Equal(HttpStatusCode.Created, own.StatusCode);
+        var ownId = (await own.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var seen = await legal.GetFromJsonAsync<JsonElement>("api/register?pageSize=500");
+        Assert.All(seen.GetProperty("items").EnumerateArray(), l => Assert.Equal(2, l.GetProperty("departmentId").GetInt32()));
+        Assert.Equal(HttpStatusCode.NotFound, (await legal.GetAsync($"api/register/{hrLetter.GetProperty("id").GetGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await legal.PostAsJsonAsync($"api/register/{ownId}/cancel", new { reason = "x" })).StatusCode);
+    }
+}

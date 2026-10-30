@@ -64,6 +64,9 @@ const nav = computed(() => [
         { to: { name: 'dashboard' }, icon: 'pi pi-chart-bar', label: t('nav.dashboard'), active: route.name === 'dashboard' },
       ]
     : []),
+  ...(auth.role
+    ? [{ to: { name: 'register' }, icon: 'pi pi-hashtag', label: t('nav.register'), active: route.name === 'register' }]
+    : []),
   ...(auth.isAdmin
     ? [
         { to: { name: 'admin' }, icon: 'pi pi-users', label: t('admin.nav'), active: route.name === 'admin' },

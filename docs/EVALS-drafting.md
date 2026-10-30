@@ -8,10 +8,10 @@ Each letter is analysed, routed to its correct department (as a clerk would), an
 |---|---|
 | Right template, end to end (from the analysis's category) | **90%** |
 | Right template if the category were correct (template mapping alone) | 90% |
-| Complete except our own reference number | 50% |
-| Average gaps for a person (besides our reference) | 0.5 |
+| Complete (our number comes from the register) | 50% |
+| Average gaps for a person | 0.5 |
 | Every reference and date in the draft found in the letter | 100% |
-| Time per draft | 0.5 ms |
+| Time per draft | 0.4 ms |
 
 Why gaps remain:
 
@@ -23,7 +23,7 @@ Why gaps remain:
 
 <details><summary>Per-letter results</summary>
 
-| Letter | Category (expected → got) | Template (expected → chosen) | Gaps besides our reference | Not found in the letter |
+| Letter | Category (expected → got) | Template (expected → chosen) | Gaps | Not found in the letter |
 |---|---|---|---|---|
 | ar-01-complaint-delay.txt | ✅ Complaint → Complaint | ✅ complaint-acknowledgement → complaint-acknowledgement | Date by which we will reply | — |
 | ar-02-urgent-minister-meeting.txt | ✅ Invitation → Invitation | ✅ accept-invitation / decline-invitation → accept-invitation | Name and title of the representative | — |

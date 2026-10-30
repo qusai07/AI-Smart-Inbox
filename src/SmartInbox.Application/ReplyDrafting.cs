@@ -50,7 +50,7 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
         var today = Today();
         var en = new SlotValues
         {
-            ["OurReference"] = null, // the outgoing register isn't built yet: a person fills it in
+            ["OurReference"] = ReplyDraftRules.NumberMarkerEn, // the register replaces it on approval
             ["Today"] = LetterDates.En(today),
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,
@@ -67,7 +67,7 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
         };
         var ar = new SlotValues
         {
-            ["OurReference"] = null,
+            ["OurReference"] = ReplyDraftRules.NumberMarkerAr,
             ["Today"] = LetterDates.ArWithHijri(today),
             ["SenderName"] = a?.Sender,
             ["TheirReference"] = a?.ReferenceNumber,
@@ -90,19 +90,7 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
     private static string? Join(string? a, string? b) => a is null ? b : b is null ? a : $"{a} {b}";
 
     /// <summary>The letter's date in the organisation's time zone (Reminders:TimeZone), not UTC.</summary>
-    private DateOnly Today()
-    {
-        var now = clock.GetUtcNow();
-        try
-        {
-            if (reminders?.TimeZone is { Length: > 0 } zone) now = TimeZoneInfo.ConvertTime(now, TimeZoneInfo.FindSystemTimeZoneById(zone));
-        }
-        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
-        {
-            // Unknown zone: UTC is close enough for a letter date.
-        }
-        return DateOnly.FromDateTime(now.DateTime);
-    }
+    private DateOnly Today() => OrganisationClock.Today(clock, reminders);
 }
 
 /// <summary>Runs a queued draft: Requested → Generating → Ready (or Failed), with timeline entries and live updates.</summary>
