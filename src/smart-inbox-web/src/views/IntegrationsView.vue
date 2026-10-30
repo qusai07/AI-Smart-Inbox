@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
-import { api, type ApiKeyRow, type WebhookEndpoint } from '../api'
+import { api, type ApiKeyRow, type MailboxStatus, type WebhookEndpoint } from '../api'
 import { formatDateTime } from '../components/Badges'
 
 defineEmits<{ upload: [] }>()
@@ -16,11 +16,13 @@ const origin = window.location.origin
 
 const keys = ref<ApiKeyRow[] | null>(null)
 const hooks = ref<WebhookEndpoint[] | null>(null)
+const mailbox = ref<MailboxStatus | null>(null)
 
 onMounted(async () => {
-  const [k, w] = await Promise.allSettled([api.apiKeys(), api.webhooks()])
+  const [k, w, m] = await Promise.allSettled([api.apiKeys(), api.webhooks(), api.mailboxStatus()])
   keys.value = k.status === 'fulfilled' ? k.value : []
   hooks.value = w.status === 'fulfilled' ? w.value : []
+  mailbox.value = m.status === 'fulfilled' ? m.value : null
 })
 
 const activeKeys = computed(() => (keys.value ?? []).filter((k) => !k.revokedAt && !(k.expiresAt && new Date(k.expiresAt) <= new Date())))
@@ -110,6 +112,34 @@ async function copy(text: string) {
       <div class="foot">
         <RouterLink :to="{ name: 'admin', hash: '#webhooks' }"><Button :label="t('integrations.hooks.manage')" icon="pi pi-arrow-right" icon-pos="right" size="small" /></RouterLink>
         <a :href="`${DOCS}/WEBHOOKS.md`" target="_blank" rel="noopener" class="doc-link">{{ t('integrations.docs') }} <i class="pi pi-external-link" /></a>
+      </div>
+    </section>
+
+    <!-- Shared mailbox -->
+    <section class="card card-pad tile">
+      <div class="tile-head">
+        <span class="icon"><i class="pi pi-envelope" /></span>
+        <div>
+          <h2>{{ t('integrations.mailbox.title') }}</h2>
+          <p class="small muted">{{ t('integrations.mailbox.what') }}</p>
+        </div>
+      </div>
+      <div class="status">
+        <template v-if="mailbox">
+          <span class="pill" :class="mailbox.enabled ? 'ok' : 'neutral'">
+            {{ !mailbox.configured ? t('integrations.mailbox.notSet') : mailbox.enabled ? t('integrations.mailbox.on') : t('integrations.mailbox.off') }}
+          </span>
+          <span v-if="mailbox.configured" class="small muted ltr">{{ mailbox.address }}</span>
+          <span v-if="mailbox.lastCheckAt" class="small muted">{{ t('integrations.mailbox.lastCheck', { when: formatDateTime(mailbox.lastCheckAt, locale) }) }}</span>
+        </template>
+      </div>
+      <ul class="points small">
+        <li>{{ t('integrations.mailbox.p1') }}</li>
+        <li>{{ t('integrations.mailbox.p2') }}</li>
+      </ul>
+      <div class="foot">
+        <RouterLink :to="{ name: 'admin', hash: '#mailbox' }"><Button :label="t('integrations.mailbox.manage')" icon="pi pi-arrow-right" icon-pos="right" size="small" /></RouterLink>
+        <a :href="`${DOCS}/MAILBOX.md`" target="_blank" rel="noopener" class="doc-link">{{ t('integrations.docs') }} <i class="pi pi-external-link" /></a>
       </div>
     </section>
 

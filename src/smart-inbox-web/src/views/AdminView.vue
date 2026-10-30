@@ -15,6 +15,7 @@ import { formatDateTime, toDate } from '../components/Badges'
 import { useAuth } from '../stores/auth'
 import { useDepartmentName, useDepartments } from '../stores/departments'
 import WebhooksPanel from '../components/WebhooksPanel.vue'
+import MailboxPanel from '../components/MailboxPanel.vue'
 
 defineEmits<{ upload: [] }>()
 
@@ -372,6 +373,8 @@ watch(() => route.hash, scrollToHash)
       </table>
     </div>
   </section>
+
+  <MailboxPanel />
 
   <WebhooksPanel />
 

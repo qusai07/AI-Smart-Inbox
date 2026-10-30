@@ -216,6 +216,26 @@ watch(() => props.id, load, { immediate: true })
       <!-- ── AI analysis ───────────────────────────────────────── -->
       <div class="insights">
         <!-- Processing -->
+        <!-- How it arrived, when it came by email -->
+        <section v-if="doc.sourceEmail" class="card card-pad by-email">
+          <div class="section-head">
+            <h3 class="eyebrow"><i class="pi pi-envelope" /> {{ t('byEmail.title') }}</h3>
+            <a :href="api.sourceEmailUrl(doc.id)" class="small" download><i class="pi pi-download" /> {{ t('byEmail.download') }}</a>
+          </div>
+          <dl class="email-facts">
+            <div><dt>{{ t('byEmail.from') }}</dt><dd dir="auto">{{ doc.sourceEmail.fromName ?? '' }} <span class="faint ltr">{{ doc.sourceEmail.fromAddress }}</span></dd></div>
+            <div><dt>{{ t('byEmail.subject') }}</dt><dd dir="auto">{{ doc.sourceEmail.subject ?? '—' }}</dd></div>
+            <div v-if="doc.sourceEmail.sentAt"><dt>{{ t('byEmail.sent') }}</dt><dd>{{ formatDateTime(doc.sourceEmail.sentAt, locale) }}</dd></div>
+          </dl>
+          <details v-if="doc.sourceEmail.bodyText" class="cover">
+            <summary>{{ t('byEmail.message') }}</summary>
+            <p dir="auto">{{ doc.sourceEmail.bodyText }}</p>
+          </details>
+          <p v-if="doc.sourceEmail.skippedAttachments.length" class="small faint">
+            {{ t('byEmail.notImported') }}: {{ doc.sourceEmail.skippedAttachments.join(', ') }}
+          </p>
+        </section>
+
         <section v-if="isProcessing" class="card card-pad processing">
           <div class="ai-head">
             <span class="ai-badge"><i class="pi pi-sparkles" /></span>
@@ -450,6 +470,42 @@ watch(() => props.id, load, { immediate: true })
 </template>
 
 <style scoped>
+.by-email .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.email-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+}
+.email-facts dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--faint);
+}
+.email-facts dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.cover {
+  margin-top: 10px;
+  font-size: 0.88rem;
+}
+.cover summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.cover p {
+  white-space: pre-wrap;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
 .back {
   display: inline-flex;
   align-items: center;

@@ -157,7 +157,7 @@ Docker demo: `docker compose --profile mailbox up` adds a **GreenMail** test mai
 |---|---|---|
 | 1 | `InboundEmail` + `Document.Source` + migration; `IMailboxClient`; `MailboxImporter` with the rules in §2 and §5; unit tests with a fake mailbox; check smtp4dev IMAP (moved to Day 2: Docker wasn't running) | ☑ |
 | 2 | `ImapMailboxClient` (MailKit), `MailboxWorker`, move/flag, retries; admin API (status, test, check, imports, retry); Docker demo wiring (GreenMail); integration test against the test mail server (runs in CI; not yet run locally) | ☑ |
-| 3 | Web UI: Administration → Mailbox, "Received by email" box + original download, inbox icon/filter, Integrations card, What's new item | ☐ |
+| 3 | Web UI: Administration → Mailbox, "Received by email" box + original download, inbox icon/filter, Integrations card, What's new item | ☑ |
 | 4 | Webhook/SDK/MCP `source`; end-to-end eval with the 20 samples by email; `docs/MAILBOX.md`; README | ☐ |
 
 ---
