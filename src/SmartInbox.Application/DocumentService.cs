@@ -21,6 +21,21 @@ public class DocumentService(
 
     public async Task<Document> UploadAsync(Stream content, string fileName, string contentType, string? uploadedBy, CancellationToken ct)
     {
+        var doc = await AddUploadAsync(content, fileName, contentType, uploadedBy, ct);
+        await db.SaveChangesAsync(ct);
+        await QueueAnalysisAsync(doc.Id, ct);
+        return doc;
+    }
+
+    /// <summary>
+    /// Stores the file and adds the document, its timeline entry and its webhook to the context without saving,
+    /// so a caller (the mailbox) can save several documents and its own record in one transaction.
+    /// Call <see cref="QueueAnalysisAsync"/> for each document after saving.
+    /// </summary>
+    public async Task<Document> AddUploadAsync(
+        Stream content, string fileName, string contentType, string? uploadedBy, CancellationToken ct,
+        DocumentSource? source = null, Guid? inboundEmailId = null, string? note = null)
+    {
         var path = await storage.SaveAsync(content, fileName, ct);
         var doc = new Document
         {
@@ -29,14 +44,16 @@ public class DocumentService(
             StoragePath = path,
             UploadedBy = _user.Name ?? uploadedBy,
             Status = DocumentStatus.Processing,
+            Source = source ?? (_user.Id?.StartsWith("apikey:", StringComparison.Ordinal) == true ? DocumentSource.Api : DocumentSource.Upload),
+            InboundEmailId = inboundEmailId,
         };
         db.Documents.Add(doc);
-        db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.Uploaded, Actor = doc.UploadedBy });
+        db.DocumentEvents.Add(new DocumentEvent { DocumentId = doc.Id, Type = DocumentEventType.Uploaded, Actor = doc.UploadedBy, Note = note });
         await _webhooks.PublishDocumentAsync(WebhookEvents.DocumentReceived, doc, doc.UploadedBy, ct);
-        await db.SaveChangesAsync(ct);
-        await queue.EnqueueAsync(doc.Id, ct);
         return doc;
     }
+
+    public ValueTask QueueAnalysisAsync(Guid documentId, CancellationToken ct) => queue.EnqueueAsync(documentId, ct);
 
     public Task<Document> UploadTextAsync(string text, string? uploadedBy, CancellationToken ct)
     {

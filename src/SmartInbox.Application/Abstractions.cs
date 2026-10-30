@@ -17,6 +17,7 @@ public interface IAppDbContext
     DbSet<WebhookEndpoint> WebhookEndpoints { get; }
     DbSet<WebhookDelivery> WebhookDeliveries { get; }
     DbSet<ReplyDraft> ReplyDrafts { get; }
+    DbSet<InboundEmail> InboundEmails { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

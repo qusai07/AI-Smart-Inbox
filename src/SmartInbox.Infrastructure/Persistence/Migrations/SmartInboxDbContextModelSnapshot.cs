@@ -425,6 +425,16 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("HandlingUpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("InboundEmailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("Upload");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -445,6 +455,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssigneeId");
+
+                    b.HasIndex("InboundEmailId");
+
+                    b.HasIndex("Source");
 
                     b.HasIndex("Status");
 
@@ -598,6 +612,78 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasIndex("DocumentId", "At");
 
                     b.ToTable("DocumentEvents");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.InboundEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BodyText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("DocumentIds")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("FromAddress")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("FromName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Mailbox")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("MessageId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SkippedAttachments")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StoragePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId")
+                        .IsUnique();
+
+                    b.HasIndex("ReceivedAt");
+
+                    b.ToTable("InboundEmails");
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.Notification", b =>
@@ -1084,6 +1170,11 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedDepartmentId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SmartInbox.Domain.InboundEmail", null)
+                        .WithMany()
+                        .HasForeignKey("InboundEmailId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("AssignedDepartment");
                 });

@@ -11,6 +11,10 @@ public class Document
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     public string? UploadedBy { get; set; }
     public string? ErrorMessage { get; set; }
+    /// <summary>How it came in: the web upload, an API key, or the shared mailbox.</summary>
+    public DocumentSource Source { get; set; } = DocumentSource.Upload;
+    /// <summary>The email it came in, when Source is Email.</summary>
+    public Guid? InboundEmailId { get; set; }
 
     // Department side, set once the document is routed.
     public int? AssignedDepartmentId { get; set; }
@@ -29,6 +33,34 @@ public class Document
     public List<Notification> Notifications { get; set; } = [];
     public List<DocumentEvent> Events { get; set; } = [];
     public List<DocumentComment> Comments { get; set; } = [];
+}
+
+/// <summary>
+/// One email seen in the shared mailbox, imported or not. The Message-Id is unique, so an email is never imported
+/// twice; the original .eml is kept so people can see the covering message.
+/// </summary>
+public class InboundEmail
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string MessageId { get; set; }
+    public required string Mailbox { get; set; }
+    public string? FromName { get; set; }
+    public string? FromAddress { get; set; }
+    public string? Subject { get; set; }
+    public DateTime? SentAt { get; set; }
+    public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>The covering message as plain text (shortened).</summary>
+    public string? BodyText { get; set; }
+    /// <summary>The original email in file storage.</summary>
+    public string? StoragePath { get; set; }
+    public InboundEmailStatus Status { get; set; }
+    /// <summary>Why it was skipped or failed.</summary>
+    public string? Reason { get; set; }
+    public int Attempts { get; set; }
+    /// <summary>JSON array of the documents created from it.</summary>
+    public string? DocumentIds { get; set; }
+    /// <summary>JSON array of attachments that were not imported, with the reason.</summary>
+    public string? SkippedAttachments { get; set; }
 }
 
 /// <summary>Internal discussion on a document. Immutable, so it doubles as an audit trail.</summary>
