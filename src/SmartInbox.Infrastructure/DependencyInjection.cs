@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddSingleton<DraftQueue>();
         services.AddSingleton<IDraftQueue>(sp => sp.GetRequiredService<DraftQueue>());
         services.AddHostedService<DraftWorker>();
+        services.AddSingleton<IDraftExporter, Drafting.DocxDraftExporter>();
 
         // Webhook signing secrets are encrypted with Data Protection; the keys must survive restarts (Docker: the /data volume).
         services.AddDataProtection()

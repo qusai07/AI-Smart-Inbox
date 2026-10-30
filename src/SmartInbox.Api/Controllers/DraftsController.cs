@@ -42,6 +42,12 @@ public class DraftsController(ReplyDraftService drafts) : ControllerBase
         return result.Outcome == ReplyDraftService.Outcome.Ok ? result.Draft! : Failure(result);
     }
 
+    [HttpGet("api/drafts/{draftId:guid}/docx")]
+    public async Task<IActionResult> Docx(Guid draftId, [FromServices] IDraftExporter exporter, CancellationToken ct) =>
+        await drafts.ExportAsync(draftId, exporter, ct) is { } file
+            ? File(file.Content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", file.FileName)
+            : NotFound();
+
     [HttpPost("api/drafts/{draftId:guid}/approve")]
     public async Task<ActionResult<ReplyDraftDto>> Approve(Guid draftId, CancellationToken ct)
     {

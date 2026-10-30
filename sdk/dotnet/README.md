@@ -37,6 +37,7 @@ No DI? `new SmartInboxClient(new SmartInboxClientOptions { BaseUrl = ..., ApiKey
 | `Documents` | `UploadAsync`, `UploadTextAsync`, `GetAsync`, `ListAsync`, `ListAllAsync` (`IAsyncEnumerable`, pages for you), `DownloadAsync`, `ReanalyzeAsync`, `RouteAsync`, `AcknowledgeAsync`, `CloseAsync`, `ReopenAsync`, `WaitForAnalysisAsync` |
 | `Departments` | `ListAsync`, `GetWorkloadAsync` |
 | `Stats` | `GetAsync` |
+| `Drafts` | `ListTemplatesAsync`, `RequestAsync`, `WaitForDraftAsync`, `GetAsync`, `ListAsync`, `UpdateAsync`, `ApproveAsync`, `RejectAsync`, `DownloadDocxAsync` |
 
 **Permissions:** the key acts as its role. A Department key only sees its department's documents (others are `404`), and desk-only calls (upload, route, stats) return `403`.
 

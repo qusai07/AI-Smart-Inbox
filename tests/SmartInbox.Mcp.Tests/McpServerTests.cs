@@ -23,10 +23,12 @@ public class McpServerTests(SmartInboxFactory server)
         """;
 
     private static readonly string[] ReadTools =
-        ["list_documents", "get_document", "read_document_text", "needs_attention", "list_departments", "get_workload", "get_stats"];
+        ["list_documents", "get_document", "read_document_text", "needs_attention", "list_departments", "get_workload", "get_stats",
+         "list_reply_templates", "get_reply_drafts"];
 
     private static readonly string[] WriteTools =
-        ["route_document", "acknowledge_document", "close_document", "reopen_document", "reanalyze_document", "add_comment", "submit_text"];
+        ["route_document", "acknowledge_document", "close_document", "reopen_document", "reanalyze_document", "add_comment", "submit_text",
+         "draft_reply"];
 
     private async Task<(ISmartInboxClient Desk, Guid Id)> AnalyzedDocumentAsync(string text = CourtNotice)
     {
@@ -280,6 +282,45 @@ public class McpServerTests(SmartInboxFactory server)
         var text = Assert.IsType<TextContentBlock>(Assert.Single(triage.Messages).Content).Text;
         Assert.Contains("up to 3 documents", text);
         Assert.Contains("Only after I say yes", text);
+    }
+
+    [Fact]
+    public async Task DraftReply_ReturnsTheBilingualDraftWithItsGaps_AndCantBeApprovedHere()
+    {
+        var (desk, id) = await AnalyzedDocumentAsync();
+        await desk.Documents.RouteAsync(id, 2);
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        await using var mcp = await McpHarness.StdioAsync(server, key);
+
+        var templates = await mcp.JsonAsync("list_reply_templates");
+        Assert.Contains(templates.EnumerateArray(), t => t.GetProperty("key").GetString() == "legal-acknowledgement");
+
+        var draft = await mcp.JsonAsync("draft_reply", new { documentId = id, instructions = "Confirm counsel is appointed" });
+
+        Assert.Equal("Ready", draft.GetProperty("status").GetString());
+        Assert.Equal("legal-acknowledgement", draft.GetProperty("templateKey").GetString());
+        Assert.Contains("تحية طيبة وبعد", draft.GetProperty("bodyAr").GetString());
+        Assert.True(draft.GetProperty("gaps").GetInt32() >= 2);
+        Assert.Contains("web app", draft.GetProperty("next").GetString());
+
+        var listed = await mcp.JsonAsync("get_reply_drafts", new { documentId = id });
+        Assert.Equal(draft.GetProperty("draftId").GetGuid(), listed.GetProperty("latest").GetProperty("draftId").GetGuid());
+
+        var tools = (await mcp.Client.ListToolsAsync()).Select(t => t.Name).ToList();
+        Assert.DoesNotContain(tools, t => t.Contains("approve"));
+    }
+
+    [Fact]
+    public async Task DraftReply_ForAnUnroutedDocument_ExplainsWhy()
+    {
+        var (_, id) = await AnalyzedDocumentAsync();
+        var (_, key) = await server.CreateKeyAsync("Clerk");
+        await using var mcp = await McpHarness.StdioAsync(server, key);
+
+        var result = await mcp.CallAsync("draft_reply", new { documentId = id });
+
+        Assert.True(result.IsError);
+        Assert.Contains("Route the document", McpHarness.Text(result));
     }
 
     // ── HTTP transport ───────────────────────────────────────────────

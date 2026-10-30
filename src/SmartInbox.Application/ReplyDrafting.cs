@@ -106,7 +106,8 @@ public class TemplateReplyDrafter(ReplyTemplateCatalog catalog, DraftingOptions 
 }
 
 /// <summary>Runs a queued draft: Requested → Generating → Ready (or Failed), with timeline entries and live updates.</summary>
-public class ReplyDraftGenerator(IAppDbContext db, IReplyDrafter drafter, IInboxNotifier notifier, ILogger<ReplyDraftGenerator> logger)
+public class ReplyDraftGenerator(
+    IAppDbContext db, IReplyDrafter drafter, IInboxNotifier notifier, ILogger<ReplyDraftGenerator> logger, IWebhookPublisher? webhooks = null)
 {
     public async Task GenerateAsync(Guid draftId, CancellationToken ct)
     {
@@ -140,6 +141,7 @@ public class ReplyDraftGenerator(IAppDbContext db, IReplyDrafter drafter, IInbox
                 DocumentId = draft.DocumentId, Type = DocumentEventType.DraftReady, Actor = result.Engine, DepartmentId = doc.AssignedDepartmentId,
                 Note = $"{result.TemplateKey}, version {draft.Version}" + (result.MissingInfo.Count > 0 ? $", {result.MissingInfo.Count} item(s) to fill in" : ""),
             });
+            if (webhooks is not null) await webhooks.PublishDraftAsync(WebhookEvents.DraftReady, draft, doc, result.Engine, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {

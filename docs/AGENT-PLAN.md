@@ -202,7 +202,7 @@ On the document page, a **Reply** panel:
 | 2 | Bilingual template files + selector + slot filler; `TemplateReplyDrafter`; background worker; template catalog endpoint; unit tests | ☑ |
 | 3 | Web UI: Reply panel (templates only) | ☑ |
 | 4 | **Measure templates** on the 20 samples (right template? how much `[●]` left?) → `docs/EVALS-drafting.md` | ☑ |
-| 5 | ~~`HybridReplyDrafter` (Ollama)~~ — not built, see the decision below. Word export, webhooks `draft.*`, SDK 0.3.0, MCP tools | ☐ |
+| 5 | ~~`HybridReplyDrafter` (Ollama)~~ — not built, see the decision below. Word export, webhooks `draft.*`, SDK 0.3.0, MCP tools | ☑ |
 
 Order changed after review: templates first, measured, and the local model added only where it proves it helps.
 
@@ -218,12 +218,12 @@ Measurement also improved the templates: letters without a reference number or d
 
 ## 12. Definition of Done
 
-- [ ] All tests green in CI (no network or paid service needed)
-- [ ] With **no AI running at all** (`Templates`), every sample letter gets a correct bilingual draft with `[●]` where a person must write
-- [ ] With Ollama running (`Hybrid`), the response paragraph is filled for most samples; failures fall back cleanly
-- [ ] Evals recorded: template accuracy, no invented facts, injection letters handled, local Arabic decision
-- [ ] `draft_reply` works from Claude Code via MCP; approval impossible outside the web app
-- [ ] `docs/DRAFTING.md` + README + roadmap ticked
+- [x] All tests green (no network or paid service needed)
+- [x] With **no AI running at all**, every sample letter gets a bilingual draft with `[●]` where a person must write (right template 90%)
+- [x] ~~Ollama paragraph~~ — dropped after measuring (see the decision above)
+- [x] Evals recorded in `docs/EVALS-drafting.md`: template accuracy, gaps, no invented facts (100%)
+- [x] `draft_reply` works via MCP; there is no approve tool
+- [x] `docs/DRAFTING.md` + README + roadmap ticked
 - [ ] Demo: court notice → Draft reply → placeholders → edit → approve → Word file
 
 ---

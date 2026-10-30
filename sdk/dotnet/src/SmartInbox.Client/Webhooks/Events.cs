@@ -62,6 +62,30 @@ public sealed record DocumentReopenedEvent : DocumentEvent;
 /// <summary><c>deadline.approaching</c>: an open document is due within two days.</summary>
 public sealed record DeadlineApproachingEvent : DocumentEvent;
 
+/// <summary>A reply draft, without its text: fetch it with <c>Drafts.GetAsync(DraftId)</c>.</summary>
+/// <param name="DraftId">The draft (one version).</param>
+/// <param name="DocumentId">The letter it replies to.</param>
+/// <param name="Version">Version number; edits create new versions.</param>
+/// <param name="Status">Ready or Approved.</param>
+/// <param name="TemplateKey">The type of reply, e.g. "legal-acknowledgement".</param>
+/// <param name="DepartmentId">The department replying.</param>
+/// <param name="Actor">Who did it: a person, "API key: ...", or the drafting engine.</param>
+/// <param name="Url">Link to the document in the Smart Inbox web app.</param>
+public sealed record DraftEventData(
+    Guid DraftId, Guid DocumentId, int Version, DraftStatus Status, string? TemplateKey, int? DepartmentId, string? Actor, string Url);
+
+/// <summary>An event about a reply draft.</summary>
+public abstract record DraftEvent : SmartInboxEvent
+{
+    /// <summary>The draft and its key fields.</summary>
+    public DraftEventData Data { get; init; } = null!;
+}
+
+/// <summary><c>draft.ready</c>: a reply draft has been prepared and is waiting for a person.</summary>
+public sealed record DraftReadyEvent : DraftEvent;
+/// <summary><c>draft.approved</c>: a person approved a reply; it's ready to be sent by the usual channel.</summary>
+public sealed record DraftApprovedEvent : DraftEvent;
+
 /// <summary><c>webhook.ping</c>: an admin clicked "Send test".</summary>
 public sealed record WebhookPingEvent : SmartInboxEvent
 {

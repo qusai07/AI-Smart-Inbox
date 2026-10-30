@@ -76,6 +76,14 @@ public class RejectDraftRequestValidator : AbstractValidator<RejectDraftRequest>
     public RejectDraftRequestValidator() => RuleFor(x => x.Reason).MaximumLength(1000);
 }
 
+/// <summary>Turns a draft into a file people can print, sign and send (Word in production).</summary>
+public interface IDraftExporter
+{
+    byte[] Export(ReplyDraft draft);
+}
+
+public record DraftFile(byte[] Content, string FileName);
+
 /// <summary>Background generation of drafts (one at a time per draft id).</summary>
 public interface IDraftQueue
 {
@@ -87,7 +95,8 @@ public interface IDraftQueue
 /// (the desk, or staff of the department it is routed to) can work on its reply.
 /// </summary>
 public class ReplyDraftService(
-    IAppDbContext db, ICurrentUser user, DraftingOptions options, IDraftQueue queue, IInboxNotifier notifier, ReplyTemplateCatalog? templates = null)
+    IAppDbContext db, ICurrentUser user, DraftingOptions options, IDraftQueue queue, IInboxNotifier notifier,
+    ReplyTemplateCatalog? templates = null, IWebhookPublisher? webhooks = null)
 {
     private readonly ReplyTemplateCatalog _templates = templates ?? new ReplyTemplateCatalog();
 
@@ -171,6 +180,16 @@ public class ReplyDraftService(
         return await DecideAsync(draft, doc, ReplyDraftStatus.Approved, DocumentEventType.DraftApproved, $"version {draft.Version}", ct);
     }
 
+    /// <summary>Word file of a ready or approved draft. Null when it doesn't exist, isn't visible, or has no text yet.</summary>
+    public async Task<DraftFile?> ExportAsync(Guid draftId, IDraftExporter exporter, CancellationToken ct)
+    {
+        var (draft, doc) = await LoadAsync(draftId, ct);
+        if (draft is null || doc is null || draft.Status is not (ReplyDraftStatus.Ready or ReplyDraftStatus.Approved)) return null;
+        var reference = await db.Analyses.Where(a => a.DocumentId == doc.Id).Select(a => a.ReferenceNumber).FirstOrDefaultAsync(ct);
+        var name = new string((reference ?? doc.Id.ToString("N")[..8]).Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+        return new DraftFile(exporter.Export(draft), $"reply-{name}-v{draft.Version}.docx");
+    }
+
     public async Task<Result> RejectAsync(Guid draftId, string? reason, CancellationToken ct)
     {
         var (draft, doc) = await LoadAsync(draftId, ct);
@@ -186,6 +205,8 @@ public class ReplyDraftService(
         draft.DecidedBy = user.Name;
         draft.DecidedAt = DateTime.UtcNow;
         AddEvent(doc, type, note);
+        if (status == ReplyDraftStatus.Approved && webhooks is not null)
+            await webhooks.PublishDraftAsync(WebhookEvents.DraftApproved, draft, doc, user.Name, ct);
         await db.SaveChangesAsync(ct);
         await notifier.DraftChangedAsync(doc.Id, draft.Id, draft.Status, Audience.Of(doc.AssignedDepartmentId), ct);
         return new(Outcome.Ok, ReplyDraftDto.From(draft, true));

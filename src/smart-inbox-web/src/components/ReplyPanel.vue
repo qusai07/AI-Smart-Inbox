@@ -297,6 +297,12 @@ async function copy(lang: 'en' | 'ar') {
           </div>
         </div>
 
+        <div v-if="current.status === 'Approved' || (editable && !dirty)" class="download">
+          <a :href="api.draftDocxUrl(current.id)" class="p-button p-button-sm p-button-outlined" download>
+            <i class="pi pi-file-word" /> {{ t('reply.word') }}
+          </a>
+        </div>
+
         <div v-if="editable" class="actions">
           <Button :label="t('reply.save')" icon="pi pi-save" severity="secondary" :disabled="!dirty" :loading="busy && dirty" @click="save" />
           <Button
@@ -453,6 +459,15 @@ async function copy(lang: 'en' | 'ar') {
   margin: 0;
   padding-inline-start: 18px;
   font-size: 0.85rem;
+}
+.download {
+  margin-top: 12px;
+}
+.download a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
 }
 .small {
   font-size: 0.8rem;

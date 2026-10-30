@@ -101,6 +101,8 @@ public static class WebhookVerifier
                 "document.closed" => Document<DocumentClosedEvent>(envelope),
                 "document.reopened" => Document<DocumentReopenedEvent>(envelope),
                 "deadline.approaching" => Document<DeadlineApproachingEvent>(envelope),
+                "draft.ready" => Draft<DraftReadyEvent>(envelope),
+                "draft.approved" => Draft<DraftApprovedEvent>(envelope),
                 "webhook.ping" => new WebhookPingEvent
                 {
                     Id = envelope.Id, Type = envelope.Type, CreatedAt = envelope.CreatedAt, ApiVersion = envelope.ApiVersion ?? "", Data = envelope.Data,
@@ -121,6 +123,12 @@ public static class WebhookVerifier
     {
         Id = e.Id!, Type = e.Type!, CreatedAt = e.CreatedAt, ApiVersion = e.ApiVersion ?? "",
         Data = e.Data.Deserialize<DocumentEventData>(SmartInboxClient.Json) ?? throw new JsonException("data is null"),
+    };
+
+    private static T Draft<T>(Envelope e) where T : DraftEvent, new() => new()
+    {
+        Id = e.Id!, Type = e.Type!, CreatedAt = e.CreatedAt, ApiVersion = e.ApiVersion ?? "",
+        Data = e.Data.Deserialize<DraftEventData>(SmartInboxClient.Json) ?? throw new JsonException("data is null"),
     };
 
     private sealed record Envelope(string? Id, string? Type, DateTimeOffset CreatedAt, string? ApiVersion, JsonElement Data);

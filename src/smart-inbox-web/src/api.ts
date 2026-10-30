@@ -388,6 +388,7 @@ export const api = {
   updateDraft: (id: string, body: { subjectEn: string; bodyEn: string; subjectAr: string; bodyAr: string }) =>
     request<ReplyDraft>(`/api/drafts/${id}`, json('PUT', body)),
   approveDraft: (id: string) => request<ReplyDraft>(`/api/drafts/${id}/approve`, { method: 'POST' }),
+  draftDocxUrl: (id: string) => `/api/drafts/${id}/docx`,
   rejectDraft: (id: string, reason: string | null) => request<ReplyDraft>(`/api/drafts/${id}/reject`, json('POST', { reason })),
   webhookEvents: () => request<string[]>('/api/webhooks/events'),
   webhooks: () => request<WebhookEndpoint[]>('/api/webhooks'),
