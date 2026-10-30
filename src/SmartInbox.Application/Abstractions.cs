@@ -18,6 +18,8 @@ public interface IAppDbContext
     DbSet<WebhookDelivery> WebhookDeliveries { get; }
     DbSet<ReplyDraft> ReplyDrafts { get; }
     DbSet<InboundEmail> InboundEmails { get; }
+    DbSet<OutgoingLetter> OutgoingLetters { get; }
+    DbSet<RegisterCounter> RegisterCounters { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

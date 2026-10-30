@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddHostedService<DraftWorker>();
         services.AddSingleton<IDraftExporter, Drafting.DocxDraftExporter>();
 
+        services.AddSingleton(config.GetSection("Register").Get<RegisterOptions>() ?? new RegisterOptions());
         services.AddSingleton(config.GetSection("Mailbox").Get<MailboxOptions>() ?? new MailboxOptions());
         services.AddScoped<IMailboxClient, Mailbox.ImapMailboxClient>();
         services.AddSingleton<IMailboxRunner, Mailbox.MailboxRunner>();

@@ -37,7 +37,23 @@ public enum DocumentEventType
     DraftFailed,
     DraftEdited,
     DraftApproved,
-    DraftRejected
+    DraftRejected,
+    OutgoingIssued
+}
+
+public enum OutgoingStatus
+{
+    Issued,
+    Sent,
+    Cancelled
+}
+
+public enum SentVia
+{
+    Email,
+    Post,
+    Hand,
+    Other
 }
 
 public enum DocumentSource

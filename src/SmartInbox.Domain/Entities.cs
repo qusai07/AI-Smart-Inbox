@@ -130,6 +130,9 @@ public class Department
     /// <summary>Receives escalations for overdue items. Null = the desk mailbox, if configured.</summary>
     public string? HeadEmail { get; set; }
 
+    /// <summary>Short code used in outgoing numbers, e.g. "LEG" in MDS/LEG/2026/0042.</summary>
+    public string? Code { get; set; }
+
     // Signature block of reply letters from this department.
     public string? SignatoryNameEn { get; set; }
     public string? SignatoryNameAr { get; set; }
@@ -154,6 +157,44 @@ public class Notification
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime NextAttemptAt { get; set; } = DateTime.UtcNow;
     public DateTime? SentAt { get; set; }
+}
+
+/// <summary>
+/// An entry in the outgoing register: one letter that left (or will leave) the organisation, with its official number.
+/// Numbers are never reused or edited; a mistake is cancelled with a reason and stays in the register.
+/// </summary>
+public class OutgoingLetter
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Number { get; set; }
+    public int Year { get; set; }
+    public int Sequence { get; set; }
+    public int DepartmentId { get; set; }
+    public string? Recipient { get; set; }
+    public string? SubjectEn { get; set; }
+    public string? SubjectAr { get; set; }
+    /// <summary>The incoming letter it answers, if any.</summary>
+    public Guid? DocumentId { get; set; }
+    public Guid? ReplyDraftId { get; set; }
+    public DateTime IssuedAt { get; set; } = DateTime.UtcNow;
+    public string? IssuedBy { get; set; }
+    public OutgoingStatus Status { get; set; } = OutgoingStatus.Issued;
+    public DateTime? SentAt { get; set; }
+    public SentVia? SentVia { get; set; }
+    public string? SentNote { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelledBy { get; set; }
+    public string? CancelReason { get; set; }
+}
+
+/// <summary>The next sequence number for a year (and, optionally, a department). Updated with the entry it numbers.</summary>
+public class RegisterCounter
+{
+    public int Id { get; set; }
+    public int Year { get; set; }
+    /// <summary>0 = one sequence for the whole organisation; otherwise the department id.</summary>
+    public int Scope { get; set; }
+    public int Next { get; set; } = 1;
 }
 
 /// <summary>

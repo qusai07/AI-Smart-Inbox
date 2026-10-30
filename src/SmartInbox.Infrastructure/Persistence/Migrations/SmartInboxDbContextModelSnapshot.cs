@@ -245,6 +245,10 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Code")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -293,6 +297,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 1,
+                            Code = "MIN",
                             Description = "Executive correspondence, official invitations, high-level government communication",
                             Email = "minister.office@mds.demo",
                             HeadEmail = "chief.of.staff@mds.demo",
@@ -305,6 +310,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 2,
+                            Code = "LEG",
                             Description = "Contracts, lawsuits, legal notices, regulatory opinions",
                             Email = "legal@mds.demo",
                             HeadEmail = "legal.head@mds.demo",
@@ -317,6 +323,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 3,
+                            Code = "FIN",
                             Description = "Invoices, payments, tenders, budgets, vendor matters",
                             Email = "finance@mds.demo",
                             HeadEmail = "finance.head@mds.demo",
@@ -329,6 +336,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 4,
+                            Code = "HR",
                             Description = "Recruitment, employee affairs, training, leave, secondments",
                             Email = "hr@mds.demo",
                             HeadEmail = "hr.head@mds.demo",
@@ -341,6 +349,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 5,
+                            Code = "IT",
                             Description = "Systems, integrations, cybersecurity, IT service requests",
                             Email = "it@mds.demo",
                             HeadEmail = "it.head@mds.demo",
@@ -353,6 +362,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 6,
+                            Code = "CX",
                             Description = "Public complaints, service requests, citizen feedback",
                             Email = "customer.happiness@mds.demo",
                             HeadEmail = "customer.head@mds.demo",
@@ -365,6 +375,7 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 7,
+                            Code = "STR",
                             Description = "Circulars, KPIs, reports, policies, strategic initiatives",
                             Email = "strategy@mds.demo",
                             HeadEmail = "strategy.head@mds.demo",
@@ -750,6 +761,118 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.OutgoingLetter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssuedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Recipient")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid?>("ReplyDraftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SentNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SentVia")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SubjectAr")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("SubjectEn")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("DocumentId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("Year", "Sequence");
+
+                    b.ToTable("OutgoingLetters");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.RegisterCounter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Next")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Year", "Scope")
+                        .IsUnique();
+
+                    b.ToTable("RegisterCounters");
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.ReplyDraft", b =>
@@ -1224,6 +1347,20 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasOne("SmartInbox.Domain.Document", null)
                         .WithMany("Notifications")
                         .HasForeignKey("DocumentId");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.OutgoingLetter", b =>
+                {
+                    b.HasOne("SmartInbox.Domain.Department", null)
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SmartInbox.Domain.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.ReplyDraft", b =>

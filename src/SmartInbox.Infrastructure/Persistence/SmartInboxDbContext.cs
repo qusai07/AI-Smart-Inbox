@@ -21,6 +21,8 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<ReplyDraft> ReplyDrafts => Set<ReplyDraft>();
     public DbSet<InboundEmail> InboundEmails => Set<InboundEmail>();
+    public DbSet<OutgoingLetter> OutgoingLetters => Set<OutgoingLetter>();
+    public DbSet<RegisterCounter> RegisterCounters => Set<RegisterCounter>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -144,6 +146,32 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasOne<WebhookEndpoint>().WithMany().HasForeignKey(x => x.EndpointId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<OutgoingLetter>(e =>
+        {
+            e.Property(x => x.Number).HasMaxLength(60);
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => new { x.Year, x.Sequence });
+            e.Property(x => x.Recipient).HasMaxLength(300);
+            e.Property(x => x.SubjectEn).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.SubjectAr).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.IssuedBy).HasMaxLength(200);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.SentVia).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.SentNote).HasMaxLength(500);
+            e.Property(x => x.CancelledBy).HasMaxLength(200);
+            e.Property(x => x.CancelReason).HasMaxLength(500);
+            e.HasIndex(x => x.DocumentId);
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<RegisterCounter>(e =>
+        {
+            e.HasIndex(x => new { x.Year, x.Scope }).IsUnique();
+            // Two people issuing at once: the second save fails and is retried with the next number.
+            e.Property(x => x.Next).IsConcurrencyToken();
+        });
+
         b.Entity<InboundEmail>(e =>
         {
             e.Property(x => x.MessageId).HasMaxLength(500);
@@ -183,6 +211,7 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
 
         b.Entity<Department>(e =>
         {
+            e.Property(x => x.Code).HasMaxLength(10);
             e.Property(x => x.SignatoryNameEn).HasMaxLength(150);
             e.Property(x => x.SignatoryNameAr).HasMaxLength(150);
             e.Property(x => x.SignatoryTitleEn).HasMaxLength(150);
