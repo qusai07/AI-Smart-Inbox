@@ -199,7 +199,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="card block">
+  <section id="webhooks" class="card block">
     <div class="block-head">
       <div>
         <h2>{{ t('webhooks.title') }}</h2>
