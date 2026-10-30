@@ -19,6 +19,7 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<ReplyDraft> ReplyDrafts => Set<ReplyDraft>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -139,8 +140,32 @@ public class SmartInboxDbContext(DbContextOptions<SmartInboxDbContext> options) 
             e.HasOne<WebhookEndpoint>().WithMany().HasForeignKey(x => x.EndpointId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<ReplyDraft>(e =>
+        {
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.TemplateKey).HasMaxLength(50);
+            e.Property(x => x.Engine).HasMaxLength(100);
+            e.Property(x => x.Instructions).HasMaxLength(ReplyDraftRules.MaxInstructions);
+            e.Property(x => x.SubjectEn).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.SubjectAr).HasMaxLength(ReplyDraftRules.MaxSubject);
+            e.Property(x => x.BodyEn).HasMaxLength(ReplyDraftRules.MaxBody);
+            e.Property(x => x.BodyAr).HasMaxLength(ReplyDraftRules.MaxBody);
+            e.Property(x => x.MissingInfo).HasMaxLength(4000);
+            e.Property(x => x.Commitments).HasMaxLength(4000);
+            e.Property(x => x.RequestedBy).HasMaxLength(200);
+            e.Property(x => x.EditedBy).HasMaxLength(200);
+            e.Property(x => x.DecidedBy).HasMaxLength(200);
+            e.Property(x => x.Error).HasMaxLength(1000);
+            e.HasIndex(x => new { x.DocumentId, x.Version }).IsUnique();
+            e.HasOne<Document>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<Department>(e =>
         {
+            e.Property(x => x.SignatoryNameEn).HasMaxLength(150);
+            e.Property(x => x.SignatoryNameAr).HasMaxLength(150);
+            e.Property(x => x.SignatoryTitleEn).HasMaxLength(150);
+            e.Property(x => x.SignatoryTitleAr).HasMaxLength(150);
             e.Property(x => x.NameEn).HasMaxLength(150);
             e.Property(x => x.NameAr).HasMaxLength(150);
             e.Property(x => x.Email).HasMaxLength(320);

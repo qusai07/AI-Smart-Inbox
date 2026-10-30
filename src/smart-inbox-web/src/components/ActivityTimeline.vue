@@ -21,6 +21,12 @@ const icons: Record<DocumentEvent['type'], string> = {
   EmailFailed: 'pi pi-envelope',
   Escalated: 'pi pi-angle-double-up',
   Assigned: 'pi pi-user',
+  DraftRequested: 'pi pi-pencil',
+  DraftReady: 'pi pi-file-edit',
+  DraftFailed: 'pi pi-exclamation-triangle',
+  DraftEdited: 'pi pi-pencil',
+  DraftApproved: 'pi pi-check-circle',
+  DraftRejected: 'pi pi-times-circle',
 }
 
 function actor(e: DocumentEvent) {

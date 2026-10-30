@@ -28,6 +28,8 @@ public static class WebhookEvents
     public const string DocumentClosed = "document.closed";
     public const string DocumentReopened = "document.reopened";
     public const string DeadlineApproaching = "deadline.approaching";
+    public const string DraftReady = "draft.ready";
+    public const string DraftApproved = "draft.approved";
     /// <summary>Sent only by "Send test"; endpoints don't subscribe to it.</summary>
     public const string Ping = "webhook.ping";
 
@@ -36,7 +38,7 @@ public static class WebhookEvents
     public static readonly string[] Subscribable =
     [
         DocumentReceived, DocumentAnalyzed, DocumentAnalysisFailed, DocumentRouted,
-        DocumentAcknowledged, DocumentClosed, DocumentReopened, DeadlineApproaching,
+        DocumentAcknowledged, DocumentClosed, DocumentReopened, DeadlineApproaching, DraftReady, DraftApproved,
     ];
 }
 
@@ -124,6 +126,10 @@ public record WebhookDocumentData(
     Priority? Priority, DocumentCategory? Category, double? Confidence, HandlingStatus? Handling,
     DateOnly? Deadline, string? Actor, string Url);
 
+/// <summary>Thin like document events: no letter text, just what's needed to fetch the draft with an API key.</summary>
+public record WebhookDraftData(
+    Guid DraftId, Guid DocumentId, int Version, ReplyDraftStatus Status, string? TemplateKey, int? DepartmentId, string? Actor, string Url);
+
 public interface IWebhookPublisher
 {
     /// <summary>
@@ -134,6 +140,8 @@ public interface IWebhookPublisher
     Task<IReadOnlyList<WebhookDelivery>> PublishAsync(string eventType, object data, IReadOnlyCollection<int> departmentIds, CancellationToken ct, string? dedupKey = null);
 
     Task<IReadOnlyList<WebhookDelivery>> PublishDocumentAsync(string eventType, Document d, string? actor, CancellationToken ct, int? previousDepartmentId = null, string? dedupKey = null);
+
+    Task<IReadOnlyList<WebhookDelivery>> PublishDraftAsync(string eventType, ReplyDraft draft, Document d, string? actor, CancellationToken ct);
 }
 
 public sealed class NullWebhookPublisher : IWebhookPublisher
@@ -142,6 +150,7 @@ public sealed class NullWebhookPublisher : IWebhookPublisher
     private static readonly Task<IReadOnlyList<WebhookDelivery>> None = Task.FromResult<IReadOnlyList<WebhookDelivery>>([]);
     public Task<IReadOnlyList<WebhookDelivery>> PublishAsync(string eventType, object data, IReadOnlyCollection<int> departmentIds, CancellationToken ct, string? dedupKey = null) => None;
     public Task<IReadOnlyList<WebhookDelivery>> PublishDocumentAsync(string eventType, Document d, string? actor, CancellationToken ct, int? previousDepartmentId = null, string? dedupKey = null) => None;
+    public Task<IReadOnlyList<WebhookDelivery>> PublishDraftAsync(string eventType, ReplyDraft draft, Document d, string? actor, CancellationToken ct) => None;
 }
 
 public class WebhookPublisher(IAppDbContext db, NotificationOptions notificationOptions) : IWebhookPublisher
@@ -176,4 +185,10 @@ public class WebhookPublisher(IAppDbContext db, NotificationOptions notification
             $"{notificationOptions.AppBaseUrl.TrimEnd('/')}/documents/{d.Id}");
         return PublishAsync(eventType, data, Audience.Of(d.AssignedDepartmentId, previousDepartmentId), ct, dedupKey);
     }
+
+    public Task<IReadOnlyList<WebhookDelivery>> PublishDraftAsync(string eventType, ReplyDraft draft, Document d, string? actor, CancellationToken ct) =>
+        PublishAsync(eventType,
+            new WebhookDraftData(draft.Id, d.Id, draft.Version, draft.Status, draft.TemplateKey, d.AssignedDepartmentId, actor,
+                $"{notificationOptions.AppBaseUrl.TrimEnd('/')}/documents/{d.Id}"),
+            Audience.Of(d.AssignedDepartmentId), ct);
 }

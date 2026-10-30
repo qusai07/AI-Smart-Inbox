@@ -269,6 +269,22 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("SignatoryNameAr")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("SignatoryNameEn")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("SignatoryTitleAr")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("SignatoryTitleEn")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Departments");
@@ -282,7 +298,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "chief.of.staff@mds.demo",
                             Keywords = "minister, invitation, cabinet, ceremony, executive",
                             NameAr = "مكتب الوزير",
-                            NameEn = "Minister's Office"
+                            NameEn = "Minister's Office",
+                            SignatoryTitleAr = "مدير مكتب الوزير",
+                            SignatoryTitleEn = "Director, Minister's Office"
                         },
                         new
                         {
@@ -292,7 +310,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "legal.head@mds.demo",
                             Keywords = "contract, court, lawsuit, legal, notice, regulation",
                             NameAr = "الشؤون القانونية",
-                            NameEn = "Legal Affairs"
+                            NameEn = "Legal Affairs",
+                            SignatoryTitleAr = "مدير إدارة الشؤون القانونية",
+                            SignatoryTitleEn = "Director, Legal Affairs"
                         },
                         new
                         {
@@ -302,7 +322,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "finance.head@mds.demo",
                             Keywords = "invoice, payment, tender, budget, purchase order, vendor",
                             NameAr = "المالية والمشتريات",
-                            NameEn = "Finance & Procurement"
+                            NameEn = "Finance & Procurement",
+                            SignatoryTitleAr = "مدير إدارة المالية والمشتريات",
+                            SignatoryTitleEn = "Director, Finance & Procurement"
                         },
                         new
                         {
@@ -312,7 +334,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "hr.head@mds.demo",
                             Keywords = "employee, recruitment, training, leave, salary, secondment",
                             NameAr = "الموارد البشرية",
-                            NameEn = "Human Resources"
+                            NameEn = "Human Resources",
+                            SignatoryTitleAr = "مدير إدارة الموارد البشرية",
+                            SignatoryTitleEn = "Director, Human Resources"
                         },
                         new
                         {
@@ -322,7 +346,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "it.head@mds.demo",
                             Keywords = "system, integration, cybersecurity, software, network, data",
                             NameAr = "تقنية المعلومات",
-                            NameEn = "Information Technology"
+                            NameEn = "Information Technology",
+                            SignatoryTitleAr = "مدير إدارة تقنية المعلومات",
+                            SignatoryTitleEn = "Director, Information Technology"
                         },
                         new
                         {
@@ -332,7 +358,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "customer.head@mds.demo",
                             Keywords = "complaint, feedback, service request, customer, delay",
                             NameAr = "إسعاد المتعاملين",
-                            NameEn = "Customer Happiness"
+                            NameEn = "Customer Happiness",
+                            SignatoryTitleAr = "مدير إدارة إسعاد المتعاملين",
+                            SignatoryTitleEn = "Director, Customer Happiness"
                         },
                         new
                         {
@@ -342,7 +370,9 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                             HeadEmail = "strategy.head@mds.demo",
                             Keywords = "circular, policy, KPI, report, strategy, initiative",
                             NameAr = "الاستراتيجية والأداء",
-                            NameEn = "Strategy & Performance"
+                            NameEn = "Strategy & Performance",
+                            SignatoryTitleAr = "مدير إدارة الاستراتيجية والأداء",
+                            SignatoryTitleEn = "Director, Strategy & Performance"
                         });
                 });
 
@@ -634,6 +664,92 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.ReplyDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BodyAr")
+                        .HasMaxLength(20000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BodyEn")
+                        .HasMaxLength(20000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Commitments")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EditedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Engine")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MissingInfo")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("RequestedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SubjectAr")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("SubjectEn")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("TemplateKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("ReplyDrafts");
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.RoutingDecision", b =>
@@ -1017,6 +1133,15 @@ namespace SmartInbox.Infrastructure.Persistence.Migrations
                     b.HasOne("SmartInbox.Domain.Document", null)
                         .WithMany("Notifications")
                         .HasForeignKey("DocumentId");
+                });
+
+            modelBuilder.Entity("SmartInbox.Domain.ReplyDraft", b =>
+                {
+                    b.HasOne("SmartInbox.Domain.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SmartInbox.Domain.RoutingDecision", b =>

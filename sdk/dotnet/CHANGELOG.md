@@ -2,6 +2,11 @@
 
 All notable changes to `SmartInbox.Client` and `SmartInbox.Client.AspNetCore`. The packages follow [Semantic Versioning](https://semver.org/).
 
+## 0.3.0 — 2026-10-30
+
+- `Drafts`: `RequestAsync`, `WaitForDraftAsync`, `GetAsync`, `ListAsync`, `UpdateAsync`, `ApproveAsync`, `RejectAsync`, `DownloadDocxAsync`, `ListTemplatesAsync`
+- Webhook events `DraftReadyEvent` and `DraftApprovedEvent` (`draft.ready`, `draft.approved`)
+
 ## 0.2.0 — 2026-10-29
 
 - `Documents.CommentAsync` and `Documents.AssignAsync`

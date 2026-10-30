@@ -83,6 +83,8 @@ Leave `SMARTINBOX_MCP_WRITES` at `false` to start: Claude can read and advise, b
 | `list_departments` | Ids, names and what each department handles |
 | `get_workload` | New / in progress / closed / overdue per department |
 | `get_stats` | Volumes, AI routing accuracy, AI usage (desk keys) |
+| `list_reply_templates` | Types of reply and the letter categories they're used for |
+| `get_reply_drafts` | A document's latest reply draft (EN + AR, gaps, missing info, commitments) and earlier versions |
 
 ### Write tools (only with `SMARTINBOX_MCP_WRITES=true`)
 
@@ -95,6 +97,7 @@ Leave `SMARTINBOX_MCP_WRITES` at `false` to start: Claude can read and advise, b
 | `reanalyze_document` | | Re-run the AI; never undoes routing |
 | `add_comment` | | Internal comment |
 | `submit_text` | | New document from pasted text |
+| `draft_reply` | | Bilingual reply from a template, returned with its `[●]` gaps. **There is no approve tool**: a person approves in the web app |
 
 ### Resources and prompts
 

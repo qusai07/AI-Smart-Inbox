@@ -1,0 +1,11 @@
+{
+  "key": "decline-invitation",
+  "nameEn": "Decline an invitation",
+  "nameAr": "الاعتذار عن دعوة",
+  "categories": [],
+  "subjectEn": "Your invitation {TheirRef?}",
+  "subjectAr": "بشأن دعوتكم {TheirRef?}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe thank you for your kind invitation {TheirRefDate?}. We regret that, owing to prior commitments, the Ministry is unable to take part on this occasion, and we wish you every success with the event.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنتقدم إليكم بالشكر على دعوتكم الكريمة {TheirRefDateF?}، ونأسف لتعذر مشاركة الوزارة هذه المرة نظراً لارتباطات مسبقة، متمنين لكم التوفيق والنجاح.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "commitments": []
+}

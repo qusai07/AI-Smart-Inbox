@@ -31,7 +31,23 @@ public enum DocumentEventType
     EmailSent,
     EmailFailed,
     Escalated,
-    Assigned
+    Assigned,
+    DraftRequested,
+    DraftReady,
+    DraftFailed,
+    DraftEdited,
+    DraftApproved,
+    DraftRejected
+}
+
+public enum ReplyDraftStatus
+{
+    Requested,
+    Generating,
+    Ready,
+    Approved,
+    Rejected,
+    Failed
 }
 
 public enum NotificationKind

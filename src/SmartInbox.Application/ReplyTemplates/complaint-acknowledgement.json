@@ -1,0 +1,15 @@
+{
+  "key": "complaint-acknowledgement",
+  "nameEn": "Acknowledge a complaint",
+  "nameAr": "إشعار باستلام شكوى",
+  "categories": [
+    "Complaint"
+  ],
+  "subjectEn": "Your complaint {TheirRefDate?}",
+  "subjectAr": "بشأن شكواكم {TheirRefDateF?}",
+  "bodyEn": "Our ref: {OurReference}\nDate: {Today}\n\n{SenderName}\n\nDear Sir/Madam,\n\nWe acknowledge receipt of your complaint {TheirRefDate?} and regret any inconvenience you have experienced. Your complaint has been referred to {DepartmentTeam}, which will look into it and reply to you no later than {?Date by which we will reply}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "bodyAr": "الرقم: {OurReference}\nالتاريخ: {Today}\n\nالسادة / {SenderName}  المحترمين\n\nتحية طيبة وبعد،\n\nنفيدكم باستلام شكواكم {TheirRefDateF?}، ونعتذر عن أي إزعاج قد تعرضتم له. وقد أُحيلت الشكوى إلى {DepartmentTeam} للتحقق منها والرد عليكم في موعد أقصاه {?Date by which we will reply}.\n\nYours sincerely,\n\n{SignatoryName?}\n{SignatoryTitle}\n{Department}\n{Organisation}",
+  "commitments": [
+    "Reply to the complainant by the date stated"
+  ]
+}

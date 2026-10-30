@@ -74,6 +74,29 @@ public sealed record Page<T>(IReadOnlyList<T> Items, int Total, [property: JsonP
     public bool HasMore => PageNumber * PageSize < Total;
 }
 
+/// <summary>Where a reply draft is in its life: prepared in the background, then edited and decided by a person.</summary>
+public enum DraftStatus { Requested, Generating, Ready, Approved, Rejected, Failed }
+
+/// <summary>
+/// A reply letter in English and Arabic. Every edit is a new version. <see cref="Placeholders"/> counts the [●] gaps
+/// a person must fill before it can be approved. Nothing is ever sent by Smart Inbox.
+/// </summary>
+public sealed record ReplyDraft(
+    Guid Id, Guid DocumentId, int Version, bool IsLatest, DraftStatus Status, string? TemplateKey, string? Engine,
+    string? Instructions, string? SubjectEn, string? BodyEn, string? SubjectAr, string? BodyAr,
+    IReadOnlyList<string> MissingInfo, IReadOnlyList<string> Commitments, int Placeholders,
+    string? RequestedBy, DateTime CreatedAt, string? EditedBy, DateTime? EditedAt, string? DecidedBy, DateTime? DecidedAt, string? Error)
+{
+    /// <summary>True once the background preparation has finished (ready, or failed).</summary>
+    public bool IsPrepared => Status is not (DraftStatus.Requested or DraftStatus.Generating);
+}
+
+/// <summary>A type of reply (template), e.g. "legal-acknowledgement".</summary>
+public sealed record ReplyTemplate(string Key, string NameEn, string NameAr, IReadOnlyList<DocumentCategory> Categories);
+
+/// <summary>New text for a draft, in both languages. Saving it creates a new version.</summary>
+public sealed record ReplyText(string SubjectEn, string BodyEn, string SubjectAr, string BodyAr);
+
 /// <summary>A downloaded original file.</summary>
 public sealed record DocumentFile(Stream Content, string ContentType, string? FileName);
 

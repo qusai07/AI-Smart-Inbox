@@ -11,6 +11,10 @@ internal static class Routes
     public const string Workload = "api/departments/workload";
     public static string Members(int departmentId) => $"api/departments/{departmentId}/members";
     public const string Stats = "api/stats";
+    public const string ReplyTemplates = "api/reply-templates";
+    public static string DocumentDrafts(Guid documentId) => $"api/documents/{documentId}/drafts";
+    public static string Draft(Guid draftId) => $"api/drafts/{draftId}";
+    public static string DraftAction(Guid draftId, string action) => $"api/drafts/{draftId}/{action}";
 
     /// <summary>(method, OpenAPI path template) pairs, for the contract test.</summary>
     public static readonly (string Method, string Template)[] All =
@@ -30,5 +34,13 @@ internal static class Routes
         ("GET", "/api/departments"),
         ("GET", "/api/departments/workload"),
         ("GET", "/api/stats"),
+        ("GET", "/api/reply-templates"),
+        ("POST", "/api/documents/{id}/drafts"),
+        ("GET", "/api/documents/{id}/drafts"),
+        ("GET", "/api/drafts/{draftId}"),
+        ("PUT", "/api/drafts/{draftId}"),
+        ("POST", "/api/drafts/{draftId}/approve"),
+        ("POST", "/api/drafts/{draftId}/reject"),
+        ("GET", "/api/drafts/{draftId}/docx"),
     ];
 }

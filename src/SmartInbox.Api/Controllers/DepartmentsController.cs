@@ -10,6 +10,8 @@ namespace SmartInbox.Api.Controllers;
 
 public record UpdateDepartmentContactsRequest(string? Email, string? HeadEmail);
 
+public record UpdateSignatoryRequest(string? NameEn, string? NameAr, string? TitleEn, string? TitleAr);
+
 [ApiController]
 [Route("api/departments")]
 [Authorize(Policy = Policies.Member)]
@@ -39,6 +41,24 @@ public class DepartmentsController(IAppDbContext db, DocumentService documents) 
         if (department is null) return NotFound();
         department.Email = email;
         department.HeadEmail = head;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>Who signs reply letters from this department. Names are optional; titles appear on every letter.</summary>
+    [HttpPut("{id:int}/signatory")]
+    [Authorize(Policy = Policies.Admin)]
+    public async Task<IActionResult> SetSignatory(int id, UpdateSignatoryRequest request, CancellationToken ct)
+    {
+        if (new[] { request.NameEn, request.NameAr, request.TitleEn, request.TitleAr }.Any(v => v is { Length: > 150 }))
+            return Problem("Names and titles are at most 150 characters.", statusCode: 400);
+
+        var department = await db.Departments.FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (department is null) return NotFound();
+        department.SignatoryNameEn = Normalize(request.NameEn);
+        department.SignatoryNameAr = Normalize(request.NameAr);
+        department.SignatoryTitleEn = Normalize(request.TitleEn);
+        department.SignatoryTitleAr = Normalize(request.TitleAr);
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

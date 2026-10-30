@@ -97,6 +97,12 @@ public class Department
     public string? Email { get; set; }
     /// <summary>Receives escalations for overdue items. Null = the desk mailbox, if configured.</summary>
     public string? HeadEmail { get; set; }
+
+    // Signature block of reply letters from this department.
+    public string? SignatoryNameEn { get; set; }
+    public string? SignatoryNameAr { get; set; }
+    public string? SignatoryTitleEn { get; set; }
+    public string? SignatoryTitleAr { get; set; }
 }
 
 /// <summary>Outbox row: an email to send to a department. A background worker delivers it with retries.</summary>
@@ -116,6 +122,39 @@ public class Notification
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime NextAttemptAt { get; set; } = DateTime.UtcNow;
     public DateTime? SentAt { get; set; }
+}
+
+/// <summary>
+/// A proposed reply letter in English and Arabic. Every edit is a new version, so the generated text is kept
+/// next to what a person changed. Nothing is ever sent: a person approves it and takes it from there.
+/// </summary>
+public class ReplyDraft
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid DocumentId { get; set; }
+    public int Version { get; set; } = 1;
+    public ReplyDraftStatus Status { get; set; } = ReplyDraftStatus.Requested;
+    /// <summary>Which reply template framed the letter (e.g. "legal-acknowledgement").</summary>
+    public string? TemplateKey { get; set; }
+    /// <summary>What wrote it: "Templates", "Hybrid:qwen2.5:7b", or "Edited" for a person's version.</summary>
+    public string? Engine { get; set; }
+    /// <summary>What the requester asked for, e.g. "ask for a copy of the contract".</summary>
+    public string? Instructions { get; set; }
+    public string? SubjectEn { get; set; }
+    public string? BodyEn { get; set; }
+    public string? SubjectAr { get; set; }
+    public string? BodyAr { get; set; }
+    /// <summary>JSON array of things a person must still supply (each also appears as [●] in the text).</summary>
+    public string? MissingInfo { get; set; }
+    /// <summary>JSON array of promises the reply makes, listed so the approver sees them at a glance.</summary>
+    public string? Commitments { get; set; }
+    public string? RequestedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? EditedBy { get; set; }
+    public DateTime? EditedAt { get; set; }
+    public string? DecidedBy { get; set; }
+    public DateTime? DecidedAt { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>A credential for other systems (SDK, integrations). It acts as a role, like a user, but signs in without a browser.</summary>

@@ -81,6 +81,7 @@ flowchart LR
 | **Department inboxes** | New / In progress / Closed / Assigned to me, with closing notes and overdue indicators |
 | **Assignment and comments** | Assign an item to a staff member of the department (they get an email); internal comment thread on every document, kept as part of the record |
 | **Email notifications** | Routing, "closed" report-back, daily deadline digest, and escalation of overdue items to the department head; transactional outbox with retries; local test mail server |
+| **Reply drafts (EN + AR)** | Formal reply letters from human-written bilingual templates, filled from the analysis; unknown facts stay `[●]` until a person fills them and approves; Word export. Free, no AI ([docs/DRAFTING.md](docs/DRAFTING.md)) |
 | **Activity timeline** | Append-only history of every step, with who did it and when |
 | **Sign-in** | Local accounts (ASP.NET Core Identity) and Microsoft Entra ID; three roles enforced by the API |
 | **Arabic / English UI** | Full right-to-left layout, light and dark mode, works on mobile |
@@ -274,7 +275,7 @@ flowchart LR
 ```
 
 - **API keys** (*Administration → API keys*): `Authorization: Bearer sik_…`. A key has a role (Admin, Clerk or Department, plus a department), so it gets exactly the same permissions as a person with that role. The key is shown once; only its SHA-256 hash is stored. Actions appear on the timeline as `API key: <name>`.
-- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened` and `deadline.approaching`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
+- **Webhooks** (*Administration → Webhooks*): signed `POST`s for `document.received`, `document.analyzed`, `document.analysis_failed`, `document.routed`, `document.acknowledged`, `document.closed`, `document.reopened`, `deadline.approaching`, `draft.ready` and `draft.approved`. Events are written in the same transaction as the change (no lost or phantom events), retried for ~21 hours, and carry ids only, never document content. Internal addresses are blocked (SSRF), secrets can be rotated with 24 h overlap, and every delivery can be inspected and redelivered. Details: [docs/WEBHOOKS.md](docs/WEBHOOKS.md).
 - **MCP server for Claude** ([docs/MCP.md](docs/MCP.md)): `smartinbox-mcp` lets Claude Desktop or Claude Code find what needs attention, explain letters in English and Arabic, and route or close them. It uses your API key's permissions, is read-only unless you enable writes, and treats letter text as untrusted input (prompt-injection aware).
 - **.NET SDK** ([`sdk/dotnet`](sdk/dotnet)): `SmartInbox.Client` (typed client, paging, typed errors, safe retries, `WebhookVerifier`) and `SmartInbox.Client.AspNetCore` (`MapSmartInboxWebhooks`). Samples in [`sdk/samples`](sdk/samples).
 
@@ -313,6 +314,11 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 | `GET` `POST` `PUT` `DELETE` | `/api/webhooks` · `/api/webhooks/{id}` · `/events` | Admin (cookie) | Endpoints and the event catalog |
 | `POST` | `/api/webhooks/{id}/ping` · `/rotate-secret` | Admin (cookie) | Send a test event · new signing secret |
 | `GET` `POST` | `/api/webhooks/{id}/deliveries` · `/deliveries/{id}/redeliver` | Admin (cookie) | Delivery log · send an event again |
+| `GET` `POST` | `/api/documents/{id}/drafts` | Desk or the assigned department | Reply drafts · request one `{ templateKey?, instructions? }` |
+| `GET` `PUT` | `/api/drafts/{id}` | Same | One draft · edit (new version) |
+| `POST` | `/api/drafts/{id}/approve` · `/reject` | Same | Approve (no `[●]` left) · reject `{ reason }` |
+| `GET` | `/api/drafts/{id}/docx` · `/api/reply-templates` | Same · Member | Word file · types of reply |
+| `PUT` | `/api/departments/{id}/signatory` | Admin | Who signs the department's replies |
 | `HUB` | `/hubs/inbox` | Signed in | `DocumentStatusChanged { documentId, status }` |
 
 ## Roadmap
@@ -324,7 +330,7 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 - [ ] **Held-out eval set.** New letters the rule engine has never seen, for an honest accuracy figure.
 
 ### AI
-- [ ] **Draft a reply.** A formal bilingual reply letter, edited and approved by a person before sending.
+- [x] **Draft a reply.** A formal bilingual reply letter from templates, edited and approved by a person before sending ([docs/DRAFTING.md](docs/DRAFTING.md)).
 - [ ] **Chat with a document**, answering with quoted citations from the source.
 - [ ] **Learn from corrections.** Use clerk overrides to suggest new rule-engine keywords, or as few-shot examples for the LLM.
 - [ ] **Offline OCR** (Tesseract) so scans can be read without a cloud model.
@@ -334,7 +340,7 @@ All endpoints except sign-in require a session cookie or an API key (`Authorizat
 ### Integrations
 - [x] **API keys, signed webhooks and a .NET SDK** (`SmartInbox.Client`).
 - [x] **MCP server** so Claude can work the inbox (`smartinbox-mcp`).
-- [ ] **Correspondence agent** that drafts reply letters on top of the MCP server.
+- [x] **Reply drafting through MCP** (`draft_reply`): Claude prepares the draft; a person approves it in the web app.
 - [ ] **Mailbox ingestion.** Pull incoming correspondence from a shared mailbox (IMAP or Microsoft Graph), including attachments.
 - [ ] **Microsoft Teams notifications** as an alternative to email.
 - [ ] **Entra app roles / groups** mapped to Admin, Clerk and Department automatically.

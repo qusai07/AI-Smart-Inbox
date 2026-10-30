@@ -1,6 +1,7 @@
 // AI evals: runs the labeled samples through the analysis engine and reports accuracy per field.
 //
 //   dotnet run --project tests/SmartInbox.AiEvals -- --provider Rules|Ollama|Claude|Hybrid [--samples <dir>] [--out <file>]
+//   dotnet run --project tests/SmartInbox.AiEvals -- --drafting [--provider Rules]   reply drafting (templates) → docs/EVALS-drafting.md
 //
 // Rules and Ollama are free. Claude needs Claude:ApiKey (user-secrets of SmartInbox.Api) or ANTHROPIC_API_KEY and costs tokens.
 
@@ -17,8 +18,11 @@ using SmartInbox.Infrastructure.TextExtraction;
 
 var root = FindRepoRoot();
 var samplesDir = ArgValue("--samples") ?? Path.Combine(root, "samples");
-var provider = ArgValue("--provider");
-var outFile = ArgValue("--out") ?? Path.Combine(root, "docs", provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
+var drafting = Environment.GetCommandLineArgs().Contains("--drafting");
+// Drafting is measured on top of the free rule engine unless another engine is asked for.
+var provider = ArgValue("--provider") ?? (drafting ? "Rules" : null);
+var outFile = ArgValue("--out") ?? Path.Combine(root, "docs",
+    drafting ? "EVALS-drafting.md" : provider is null ? "EVALS.md" : $"EVALS-{provider.ToLowerInvariant()}.md");
 
 var labels = JsonSerializer.Deserialize<LabelFile>(
     await File.ReadAllTextAsync(Path.Combine(samplesDir, "labels.json")),
@@ -47,6 +51,7 @@ var departments = DepartmentSeed.All;
 Console.WriteLine($"Running {labels.Documents.Count} samples against {model} (as of {evalDate:yyyy-MM-dd})…\n");
 
 var results = new List<EvalResult>();
+var analysed = new Dictionary<string, (string Text, AiAnalysisResult Result)>();
 await Parallel.ForEachAsync(labels.Documents, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (label, ct) =>
 {
     var path = Path.Combine(samplesDir, label.File);
@@ -56,6 +61,7 @@ await Parallel.ForEachAsync(labels.Documents, new ParallelOptions { MaxDegreeOfP
         await using var stream = File.OpenRead(path);
         var text = await extractors.First(e => e.CanHandle(contentType, path)).ExtractAsync(stream, ct);
         var r = await ai.AnalyzeAsync(AnalysisInput.FromText(text!), departments, ct);
+        lock (analysed) analysed[label.File] = (text!, r);
         lock (results) results.Add(new EvalResult(label, r.Category.ToString(), r.Priority.ToString(), r.SuggestedDepartmentId, r.Confidence, r.TokensUsed, r.ModelUsed, null));
     }
     catch (Exception ex)
@@ -65,6 +71,19 @@ await Parallel.ForEachAsync(labels.Documents, new ParallelOptions { MaxDegreeOfP
 });
 
 results = results.OrderBy(r => r.Label.File).ToList();
+
+if (drafting)
+{
+    var rows = await DraftingEval.RunAsync(results.Select(r => (
+        r.Label.File, r.Label.Category, r.Label.DepartmentId, (IReadOnlyList<string>)(r.Label.Replies ?? []),
+        analysed.TryGetValue(r.Label.File, out var a) ? a.Text : "", analysed.TryGetValue(r.Label.File, out var b) ? b.Result : null, r.Error)), evalDate);
+    var report = DraftingEval.Report(rows, model, evalDate);
+    Directory.CreateDirectory(Path.GetDirectoryName(outFile)!);
+    await File.WriteAllTextAsync(outFile, report);
+    Console.WriteLine(report);
+    Console.WriteLine($"Written to {outFile}");
+    return rows.All(r => r.Error is not null) ? 1 : 0;
+}
 
 double Pct(Func<EvalResult, bool> ok) => results.Count == 0 ? 0 : results.Count(ok) * 100.0 / results.Count;
 var deptAcc = Pct(r => r.DepartmentId == r.Label.DepartmentId);
@@ -133,7 +152,7 @@ static string? ArgValue(string name)
 }
 
 record LabelFile(string EvalDate, List<Label> Documents);
-record Label(string File, string Category, string Priority, int DepartmentId);
+record Label(string File, string Category, string Priority, int DepartmentId, List<string>? Replies = null);
 record EvalResult(Label Label, string? Category, string? Priority, int? DepartmentId, double? Confidence, int Tokens, string? Model, string? Error);
 
 class FixedTimeProvider(DateOnly date) : TimeProvider
